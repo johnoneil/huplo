@@ -19,63 +19,63 @@ gtk.threads_init()
 CHANNEL = ''
 
 class MyMain:
-	def __init__(self, URI):
-		self.URI = URI
+  def __init__(self, URI):
+    self.URI = URI
 
-		self.pipeline = gst.Pipeline("mypipeline")
+    self.pipeline = gst.Pipeline("mypipeline")
 
-		self.uribin = gst.element_factory_make("uridecodebin","uribin")
-		self.uribin.set_property("uri", URI )
-		self.pipeline.add(self.uribin)
+    self.uribin = gst.element_factory_make("uridecodebin","uribin")
+    self.uribin.set_property("uri", URI )
+    self.pipeline.add(self.uribin)
 
-		self.playsink = gst.element_factory_make("playsink", "playsink")
-		self.pipeline.add(self.playsink)
+    self.playsink = gst.element_factory_make("playsink", "playsink")
+    self.pipeline.add(self.playsink)
 
-		self.text = gst.element_factory_make("textoverlay","text")
-		self.text.set_property("text","testing, one, two, three")
-		self.pipeline.add(self.text)
-		self.text.set_property("font-desc", "arial 16")
-		self.text.set_property("shaded-background","TRUE")
+    self.text = gst.element_factory_make("textoverlay","text")
+    self.text.set_property("text","testing, one, two, three")
+    self.pipeline.add(self.text)
+    self.text.set_property("font-desc", "arial 16")
+    self.text.set_property("shaded-background","TRUE")
 
-		self.convert2 = gst.element_factory_make("ffmpegcolorspace","convert2")
-		self.pipeline.add(self.convert2)
+    self.convert2 = gst.element_factory_make("ffmpegcolorspace","convert2")
+    self.pipeline.add(self.convert2)
 
-		self.uribin.connect("pad-added", self.demuxer_callback)
-		
-		bus = self.pipeline.get_bus()
-		bus.add_signal_watch()
-		bus.connect("message", self.on_message)	
+    self.uribin.connect("pad-added", self.demuxer_callback)
+    
+    bus = self.pipeline.get_bus()
+    bus.add_signal_watch()
+    bus.connect("message", self.on_message)  
 
-		self.pipeline.set_state(gst.STATE_PAUSED)
-		self.pipeline.set_state(gst.STATE_PLAYING)
+    self.pipeline.set_state(gst.STATE_PAUSED)
+    self.pipeline.set_state(gst.STATE_PLAYING)
 
-	def SetURI(self,URI):
-		self.uribin.set_property("uri", URI )
+  def SetURI(self,URI):
+    self.uribin.set_property("uri", URI )
 
-	def demuxer_callback(self, uribin, pad):
-		caps = pad.get_caps()
-		print 'on_padadded:',caps[0].get_name()
-		name = caps[0].get_name()
-		if( name == 'video/x-raw-rgb' ):
-			pad.link(self.text.get_pad('video_sink'))
-			self.text.get_pad('src').link(self.convert2.get_pad('sink'))
-			self.convert2.get_pad('src').link(self.playsink.get_pad('video_sink'))
-		else:
-			pad.link(self.playsink.get_pad('audio_sink'))
+  def demuxer_callback(self, uribin, pad):
+    caps = pad.get_caps()
+    print 'on_padadded:',caps[0].get_name()
+    name = caps[0].get_name()
+    if( name == 'video/x-raw-rgb' ):
+      pad.link(self.text.get_pad('video_sink'))
+      self.text.get_pad('src').link(self.convert2.get_pad('sink'))
+      self.convert2.get_pad('src').link(self.playsink.get_pad('video_sink'))
+    else:
+      pad.link(self.playsink.get_pad('audio_sink'))
 
-		return True
+    return True
 
-	def on_message(self, bus, message):
-		t = message.type
-		if t == gst.MESSAGE_EOS:
-			self.pipeline.set_state(gst.STATE_NULL)
-			print "message EOS"
-			gtk.main_quit ()
-		elif t == gst.MESSAGE_ERROR:
-			self.pipeline.set_state(gst.STATE_NULL)
-			err, debug = message.parse_error()
-			print "Error: %s" % err, debug
-			gtk.main_quit ()
+  def on_message(self, bus, message):
+    t = message.type
+    if t == gst.MESSAGE_EOS:
+      self.pipeline.set_state(gst.STATE_NULL)
+      print "message EOS"
+      gtk.main_quit ()
+    elif t == gst.MESSAGE_ERROR:
+      self.pipeline.set_state(gst.STATE_NULL)
+      err, debug = message.parse_error()
+      print "Error: %s" % err, debug
+      gtk.main_quit ()
 
 start = None
 
