@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# vim: set ts=2 expandtab:
+
 import pygst
 pygst.require("0.10")
 import gst
