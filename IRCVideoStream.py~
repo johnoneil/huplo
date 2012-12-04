@@ -5,12 +5,17 @@ pygst.require("0.10")
 import gst
 import pygtk
 import gtk
+
 import logging
 import re
+from pprint import pprint
+
 from oyoyo.client import IRCClient
 from oyoyo.cmdhandler import DefaultCommandHandler
 from oyoyo import helpers
+
 import sys
+import getopt
 from optparse import OptionParser
 
 gtk.threads_init()
