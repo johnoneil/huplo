@@ -17,12 +17,29 @@ from optparse import OptionParser
 
 gtk.threads_init()
 
-#currently ineptly carrying info around in globals
-CHANNEL = ''
+#Thanks to Dunk Fordyce, former author of oyoyo IRC library for this section
+class MyHandler(DefaultCommandHandler):
+  def __init__(self, client, parent):
+    DefaultCommandHandler.__init__(self, client)
+    self.parent = parent
+  def privmsg(self, nick, chan, msg):
+    msg = msg.decode()
+    rawnick = nick.split('!')[0]
+    to_say =  rawnick  + ' : ' + msg.strip()
+    self.parent.text.set_property('text',to_say)
 
-class MyMain:
-  def __init__(self, URI):
+def MyHandlerFactory(data):
+  def f(client):
+    return MyHandler(client, data)
+  return f
+
+class IRCOverlayVideoStream:
+  def __init__(self, URI, host, port, channel, nick ):
     self.URI = URI
+    self.host = host
+    self.port = port
+    self.channel = channel
+    self.nick = nick
 
     self.pipeline = gst.Pipeline("mypipeline")
 
@@ -34,7 +51,7 @@ class MyMain:
     self.pipeline.add(self.playsink)
 
     self.text = gst.element_factory_make("textoverlay","text")
-    self.text.set_property("text","testing, one, two, three")
+    self.text.set_property("text","")
     self.pipeline.add(self.text)
     self.text.set_property("font-desc", "arial 16")
     self.text.set_property("shaded-background","TRUE")
@@ -51,8 +68,22 @@ class MyMain:
     self.pipeline.set_state(gst.STATE_PAUSED)
     self.pipeline.set_state(gst.STATE_PLAYING)
 
+    self.cli = IRCClient(MyHandlerFactory(self), host=self.host, port=self.port, nick=self.nick, connect_cb=self.connect_cb)
+    self.conn = self.cli.connect()
+
+    gtk.idle_add(self.conn.next)
+
   def SetURI(self,URI):
     self.uribin.set_property("uri", URI )
+
+  def connect_cb(self,cli):
+    helpers.join(self.cli, self.channel)
+
+  def privmsg(self, nick, chan, msg):
+    msg = msg.decode()
+    rawnick = nick.split('!')[0]
+    to_say =  rawnick  + ' : ' + msg.strip()
+    self.text.set_property('text',to_say)
 
   def demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
@@ -79,29 +110,6 @@ class MyMain:
       print "Error: %s" % err, debug
       gtk.main_quit ()
 
-start = None
-
-class MyHandler(DefaultCommandHandler):
-  def privmsg(self, nick, chan, msg):
-    msg = msg.decode()
-    rawnick = nick.split('!')[0]
-    #match = re.match('\!say (.*)', msg)
-    #if match:
-    to_say =  rawnick  + ' : ' + msg.strip()
-    #self.messagebuffer.append( to_say )
-    #if( len(self.messagebuffer) > 5 ):
-    #  self.messagebuffer.pop(0)
-    #newtext = ''
-    #for message in self.messagebuffer:
-    #  newtext += ( message + '\n' )
-    
-    #print('Saying, "%s"' % to_say)
-    #helpers.msg(self.client, chan, to_say)
-    #start.text.set_property('text',newtext)
-    start.text.set_property('text',to_say)
-
-def connect_cb(cli):
-  helpers.join(cli, CHANNEL)
 
 def main():
   usage = 'usage: %prog --host <irc hostname> --port <irc port> --nick <irc nickname> --channel <irc channel> --stream <media stream to overlay>'
@@ -126,16 +134,8 @@ def main():
   if options.verbose:
     logging.basicConfig(level=logging.DEBUG)
 
-  global CHANNEL
-  CHANNEL = options.CHANNEL
-  global start
-  start=MyMain( options.STREAM_URL )
+  stream = IRCOverlayVideoStream( options.STREAM_URL, options.HOST, options.PORT, options.CHANNEL, options.NICK )
 
-  cli = IRCClient(MyHandler, host=options.HOST, port=options.PORT, nick=options.NICK,
-          connect_cb=connect_cb)
-  conn = cli.connect()
-
-  gtk.idle_add(conn.next)
   gtk.main()
   
 
