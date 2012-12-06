@@ -36,7 +36,7 @@ class MyHandler(DefaultCommandHandler):
     msg = msg.decode()
     rawnick = nick.split('!')[0]
     fullmsg =  rawnick  + ' : ' + msg.strip()
-    self.parent.render.Push( IRCMessage( nick,"www.someting.com",msg) )
+    self.parent.render.Push( IRCMessage( rawnick,"www.someting.com",msg) )
     #self.parent.msgbuffer.Push( IRCMessage( nick,"www.someting.com",msg) )
     #self.parent.PushMessage(fullmsg)
 

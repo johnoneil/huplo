@@ -23,22 +23,24 @@ class Simple:
   def Push(self, msg ):
     self.buffer.Push(msg)
   def OnDraw(self,ctx,width,height,framerate):
-    if( len(self.buffer) > 0 ):
-      center_x = width/4
-      center_y = 3*height/4
-
-      # draw a circle
-      radius = float (min (width, height)) * 0.25
-      ctx.set_source_rgba (0.0, 0.0, 0.0, 0.9)
-      ctx.move_to (center_x, center_y)
-      ctx.arc (center_x, center_y, radius, 0, 2.0*pi)
-      ctx.close_path()
-      ctx.fill()
-      msg = self.buffer.Message( 0 )
+    ul_x = width/16
+    ul_y = 2*height/3
+    for entry in self.buffer:
+      nick = entry.nick
+      msg = entry.nick + ":" + entry.msg
       ctx.set_source_rgba (1.0, 1.0, 1.0, 1.0)
-      ctx.set_font_size(0.3 * radius)
-      txt = msg.msg
-      extents = ctx.text_extents (txt)
-      ctx.move_to(center_x - extents[2]/2, center_y + extents[3]/2)
-      ctx.text_path(txt)
-      ctx.fill()
+      ctx.set_font_size(24)
+      extents = ctx.text_extents(msg)
+      #ctx.text_path(msg)
+      #ctx.set_line_width(1.5)
+      #ctx.set_source_rgb(0,0,0)
+      #ctx.stroke_preserve()
+      ctx.move_to( ul_x+2,ul_y+2 )
+      ctx.set_source_rgb(0,0,0)
+      ctx.show_text(msg)
+      ctx.move_to( ul_x,ul_y )
+      ctx.set_source_rgb(1,1,0)
+      ctx.show_text(msg)
+      ul_y = ul_y + 1.25 * extents[3]
+      #ctx.move_to(center_x - extents[2]/2, center_y + extents[3]/2)
+

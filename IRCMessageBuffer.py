@@ -38,6 +38,9 @@ class IRCMessageBuffer:
   def __len__(self):
     return len(self.buffer)
 
+  def __getitem__(self, index):
+    return self.buffer[index]
+
   def Pop(self):
     return self.buffer.pop(0)
 
