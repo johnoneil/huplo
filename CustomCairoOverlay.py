@@ -41,6 +41,7 @@ class CustomCairoOverlay(gst.Element):
   def __init__(self, customDrawHandler = None ):
     gst.Element.__init__(self)
     self.customDrawHandler = customDrawHandler
+    self.lastTimestamp = 0
 
     self.sinkpad = gst.Pad(self._sinkpadtemplate, "sink")
     self.sinkpad.set_chain_function(self.chainfunc)
@@ -74,6 +75,7 @@ class CustomCairoOverlay(gst.Element):
     return self.sinkpad.push_event (event)
 
   def draw_on (self, buf):
+    deltaT = buf.timestamp - self.lastTimestamp
     try:
       caps = buf.get_caps()
       width = caps[0]['width']
@@ -88,7 +90,7 @@ class CustomCairoOverlay(gst.Element):
 
     try:
       if(self.customDrawHandler is not None):
-        self.customDrawHandler(ctx,width,height,framerate)
+        self.customDrawHandler(ctx,width,height,buf.timestamp,deltaT)
     except:
       print "Failed cairo render"
       traceback.print_exc()

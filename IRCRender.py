@@ -20,9 +20,10 @@ from math import pi
 class Simple:
   def __init__(self):
     self.buffer = IRCMessageBuffer()
+    self.lastTimestamp = 0
   def Push(self, msg ):
     self.buffer.Push(msg)
-  def OnDraw(self,ctx,width,height,framerate):
+  def OnDraw(self,ctx,width,height,timestamp,deltaT):
     ul_x = width/16
     ul_y = 2*height/3
     for entry in self.buffer:
