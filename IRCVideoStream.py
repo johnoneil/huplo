@@ -16,6 +16,7 @@ import gst
 from CustomCairoOverlay import CustomCairoOverlay
 from IRCMessageBuffer import IRCMessageBuffer
 from IRCMessageBuffer import IRCMessage
+from IRCRender import Simple
 
 import logging
 from oyoyo.client import IRCClient
@@ -35,7 +36,8 @@ class MyHandler(DefaultCommandHandler):
     msg = msg.decode()
     rawnick = nick.split('!')[0]
     fullmsg =  rawnick  + ' : ' + msg.strip()
-    self.parent.msgbuffer.Push( IRCMessage( nick,"www.someting.com",msg) )
+    self.parent.render.Push( IRCMessage( nick,"www.someting.com",msg) )
+    #self.parent.msgbuffer.Push( IRCMessage( nick,"www.someting.com",msg) )
     #self.parent.PushMessage(fullmsg)
 
 def MyHandlerFactory(data):
@@ -52,6 +54,7 @@ class IRCOverlayVideoStream:
     self.nick = nick
 
     self.msgbuffer = IRCMessageBuffer()
+    self.render = Simple()
 
     self.pipeline = gst.Pipeline("mypipeline")
 
@@ -62,7 +65,7 @@ class IRCOverlayVideoStream:
     self.playsink = gst.element_factory_make("playsink", "playsink")
     self.pipeline.add(self.playsink)
 
-    self.text = CustomCairoOverlay(self.OnDraw)
+    self.text = CustomCairoOverlay(self.render.OnDraw)
     self.pipeline.add(self.text)
 
     self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")

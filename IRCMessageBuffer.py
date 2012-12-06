@@ -27,7 +27,7 @@ class IRCMessageBuffer:
   def Push(self,message):
     self.buffer.append(message)
     if( len(self.buffer) > self.bufferlength ):
-      self.buffer.remove(0)
+      self.buffer.pop(0)
 
   def Clear(self):
     self.buffer.clear()
