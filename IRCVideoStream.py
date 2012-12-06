@@ -2,20 +2,25 @@
 
 # vim: set ts=2 expandtab:
 
-import pygst
-pygst.require("0.10")
-import gst
+import sys, os
 import pygtk
+pygtk.require ("2.0")
 import gtk
+import gobject
+gobject.threads_init()
+
+import pygst
+pygst.require('0.10')
+import gst
+
+from CustomCairoOverlay import CustomCairoOverlay
+
 import logging
-import re
 from oyoyo.client import IRCClient
 from oyoyo.cmdhandler import DefaultCommandHandler
 from oyoyo import helpers
-import sys
 from optparse import OptionParser
 
-gtk.threads_init()
 
 #Thanks to Dunk Fordyce, former author of oyoyo IRC library for this section
 class MyHandler(DefaultCommandHandler):
@@ -25,8 +30,8 @@ class MyHandler(DefaultCommandHandler):
   def privmsg(self, nick, chan, msg):
     msg = msg.decode()
     rawnick = nick.split('!')[0]
-    to_say =  rawnick  + ' : ' + msg.strip()
-    self.parent.text.set_property('text',to_say)
+    fullmsg =  rawnick  + ' : ' + msg.strip()
+    #self.parent.PushMessage(fullmsg)
 
 def MyHandlerFactory(data):
   def f(client):
@@ -41,6 +46,10 @@ class IRCOverlayVideoStream:
     self.channel = channel
     self.nick = nick
 
+    #a buffer to keep IRC messages in, to be displayed in different styles atop a video
+    self.messageBuffer = []
+    self.messageLimit = 5
+
     self.pipeline = gst.Pipeline("mypipeline")
 
     self.uribin = gst.element_factory_make("uridecodebin","uribin")
@@ -50,11 +59,17 @@ class IRCOverlayVideoStream:
     self.playsink = gst.element_factory_make("playsink", "playsink")
     self.pipeline.add(self.playsink)
 
-    self.text = gst.element_factory_make("textoverlay","text")
-    self.text.set_property("text","")
+    self.text = CustomCairoOverlay()
+    #self.text = gst.element_factory_make("cairooverlay","text")
+    #self.text.connect("draw", self.OnDraw)
+    #self.text = gst.element_factory_make("textoverlay","text")
+    #self.text.set_property("text","")
     self.pipeline.add(self.text)
-    self.text.set_property("font-desc", "arial 16")
-    self.text.set_property("shaded-background","TRUE")
+    #self.text.set_property("font-desc", "arial 11")
+    #self.text.set_property("shaded-background","TRUE")
+
+    self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
+    self.pipeline.add(self.convert1)
 
     self.convert2 = gst.element_factory_make("ffmpegcolorspace","convert2")
     self.pipeline.add(self.convert2)
@@ -71,13 +86,22 @@ class IRCOverlayVideoStream:
     self.cli = IRCClient(MyHandlerFactory(self), host=self.host, port=self.port, nick=self.nick, connect_cb=self.connect_cb)
     self.conn = self.cli.connect()
 
-    gtk.idle_add(self.conn.next)
+    gobject.idle_add(self.conn.next)
+
+  def PushMessage(self,message):
+    self.messageBuffer.append(message)
+    if( len(self.messageBuffer) > self.messageLimit ):
+      self.messageBuffer.pop(0)
 
   def SetURI(self,URI):
     self.uribin.set_property("uri", URI )
 
   def connect_cb(self,cli):
     helpers.join(self.cli, self.channel)
+
+  def OnDraw(this, overlay, cr, timestamp, duration):
+    cr.show_text('Hello World')
+    cr.stroke() # commit to surface
 
   def privmsg(self, nick, chan, msg):
     msg = msg.decode()
@@ -87,10 +111,12 @@ class IRCOverlayVideoStream:
 
   def demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
-    print 'on_padadded:',caps[0].get_name()
     name = caps[0].get_name()
     if( name == 'video/x-raw-rgb' ):
-      pad.link(self.text.get_pad('video_sink'))
+      pad.link(self.convert1.get_pad('sink'))
+      self.convert1.get_pad('src').link(self.text.get_pad('sink'))
+      #pad.link(self.text.get_pad('sink'))
+      #self.text.get_pad('src').link(self.playsink.get_pad('video_sink'))
       self.text.get_pad('src').link(self.convert2.get_pad('sink'))
       self.convert2.get_pad('src').link(self.playsink.get_pad('video_sink'))
     else:
@@ -103,12 +129,12 @@ class IRCOverlayVideoStream:
     if t == gst.MESSAGE_EOS:
       self.pipeline.set_state(gst.STATE_NULL)
       print "message EOS"
-      gtk.main_quit ()
+      gtk.main_quit()
     elif t == gst.MESSAGE_ERROR:
       self.pipeline.set_state(gst.STATE_NULL)
       err, debug = message.parse_error()
       print "Error: %s" % err, debug
-      gtk.main_quit ()
+      gtk.main_quit()
 
 
 def main():
@@ -140,4 +166,5 @@ def main():
   
 
 if __name__ == "__main__":
-    main()
+  #pygtk.gdk.threads_init()
+  main()
