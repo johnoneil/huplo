@@ -14,6 +14,8 @@ pygst.require('0.10')
 import gst
 
 from CustomCairoOverlay import CustomCairoOverlay
+from IRCMessageBuffer import IRCMessageBuffer
+from IRCMessageBuffer import IRCMessage
 
 import logging
 from oyoyo.client import IRCClient
@@ -31,6 +33,7 @@ class MyHandler(DefaultCommandHandler):
     msg = msg.decode()
     rawnick = nick.split('!')[0]
     fullmsg =  rawnick  + ' : ' + msg.strip()
+    self.parent.msgbuffer.Push( IRCMessage( nick,"www.someting.com",msg) )
     #self.parent.PushMessage(fullmsg)
 
 def MyHandlerFactory(data):
@@ -46,9 +49,7 @@ class IRCOverlayVideoStream:
     self.channel = channel
     self.nick = nick
 
-    #a buffer to keep IRC messages in, to be displayed in different styles atop a video
-    self.messageBuffer = []
-    self.messageLimit = 5
+    self.msgbuffer = IRCMessageBuffer()
 
     self.pipeline = gst.Pipeline("mypipeline")
 
@@ -88,26 +89,11 @@ class IRCOverlayVideoStream:
 
     gobject.idle_add(self.conn.next)
 
-  def PushMessage(self,message):
-    self.messageBuffer.append(message)
-    if( len(self.messageBuffer) > self.messageLimit ):
-      self.messageBuffer.pop(0)
-
   def SetURI(self,URI):
     self.uribin.set_property("uri", URI )
 
   def connect_cb(self,cli):
     helpers.join(self.cli, self.channel)
-
-  def OnDraw(this, overlay, cr, timestamp, duration):
-    cr.show_text('Hello World')
-    cr.stroke() # commit to surface
-
-  def privmsg(self, nick, chan, msg):
-    msg = msg.decode()
-    rawnick = nick.split('!')[0]
-    to_say =  rawnick  + ' : ' + msg.strip()
-    self.text.set_property('text',to_say)
 
   def demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
