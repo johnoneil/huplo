@@ -23,6 +23,8 @@ from oyoyo.cmdhandler import DefaultCommandHandler
 from oyoyo import helpers
 from optparse import OptionParser
 
+from math import pi
+
 
 #Thanks to Dunk Fordyce, former author of oyoyo IRC library for this section
 class MyHandler(DefaultCommandHandler):
@@ -60,14 +62,8 @@ class IRCOverlayVideoStream:
     self.playsink = gst.element_factory_make("playsink", "playsink")
     self.pipeline.add(self.playsink)
 
-    self.text = CustomCairoOverlay()
-    #self.text = gst.element_factory_make("cairooverlay","text")
-    #self.text.connect("draw", self.OnDraw)
-    #self.text = gst.element_factory_make("textoverlay","text")
-    #self.text.set_property("text","")
+    self.text = CustomCairoOverlay(self.OnDraw)
     self.pipeline.add(self.text)
-    #self.text.set_property("font-desc", "arial 11")
-    #self.text.set_property("shaded-background","TRUE")
 
     self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
     self.pipeline.add(self.convert1)
@@ -94,6 +90,25 @@ class IRCOverlayVideoStream:
 
   def connect_cb(self,cli):
     helpers.join(self.cli, self.channel)
+
+  def OnDraw(self,ctx,width,height,framerate):
+    center_x = width/4
+    center_y = 3*height/4
+
+    # draw a circle
+    radius = float (min (width, height)) * 0.25
+    ctx.set_source_rgba (0.0, 0.0, 0.0, 0.9)
+    ctx.move_to (center_x, center_y)
+    ctx.arc (center_x, center_y, radius, 0, 2.0*pi)
+    ctx.close_path()
+    ctx.fill()
+    ctx.set_source_rgba (1.0, 1.0, 1.0, 1.0)
+    ctx.set_font_size(0.3 * radius)
+    txt = "Hello World"
+    extents = ctx.text_extents (txt)
+    ctx.move_to(center_x - extents[2]/2, center_y + extents[3]/2)
+    ctx.text_path(txt)
+    ctx.fill()
 
   def demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
