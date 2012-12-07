@@ -76,6 +76,7 @@ class CustomCairoOverlay(gst.Element):
 
   def draw_on (self, buf):
     deltaT = buf.timestamp - self.lastTimestamp
+    self.lastTimestamp = buf.timestamp
     try:
       caps = buf.get_caps()
       width = caps[0]['width']

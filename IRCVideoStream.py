@@ -17,6 +17,7 @@ from CustomCairoOverlay import CustomCairoOverlay
 from IRCMessageBuffer import IRCMessageBuffer
 from IRCMessageBuffer import IRCMessage
 from IRCRender import Simple
+from IRCRender import Ticker
 
 import logging
 from oyoyo.client import IRCClient
@@ -37,8 +38,6 @@ class MyHandler(DefaultCommandHandler):
     rawnick = nick.split('!')[0]
     fullmsg =  rawnick  + ' : ' + msg.strip()
     self.parent.render.Push( IRCMessage( rawnick,"www.someting.com",msg) )
-    #self.parent.msgbuffer.Push( IRCMessage( nick,"www.someting.com",msg) )
-    #self.parent.PushMessage(fullmsg)
 
 def MyHandlerFactory(data):
   def f(client):
@@ -54,7 +53,8 @@ class IRCOverlayVideoStream:
     self.nick = nick
 
     self.msgbuffer = IRCMessageBuffer()
-    self.render = Simple()
+    #self.render = Simple()
+    self.render = Ticker()
 
     self.pipeline = gst.Pipeline("mypipeline")
 
@@ -93,25 +93,6 @@ class IRCOverlayVideoStream:
 
   def connect_cb(self,cli):
     helpers.join(self.cli, self.channel)
-
-  def OnDraw(self,ctx,width,height,framerate):
-    center_x = width/4
-    center_y = 3*height/4
-
-    # draw a circle
-    radius = float (min (width, height)) * 0.25
-    ctx.set_source_rgba (0.0, 0.0, 0.0, 0.9)
-    ctx.move_to (center_x, center_y)
-    ctx.arc (center_x, center_y, radius, 0, 2.0*pi)
-    ctx.close_path()
-    ctx.fill()
-    ctx.set_source_rgba (1.0, 1.0, 1.0, 1.0)
-    ctx.set_font_size(0.3 * radius)
-    txt = "Hello World"
-    extents = ctx.text_extents (txt)
-    ctx.move_to(center_x - extents[2]/2, center_y + extents[3]/2)
-    ctx.text_path(txt)
-    ctx.fill()
 
   def demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
@@ -170,5 +151,4 @@ def main():
   
 
 if __name__ == "__main__":
-  #pygtk.gdk.threads_init()
   main()
