@@ -56,7 +56,7 @@ class Ticker:
   def Push(self, msg ):
     newmsg = TickerIRCMsg( msg )
     newmsg.x = self.current_w
-    newmsg.y = 6 * self.current_h / 8
+    newmsg.y = 7 * self.current_h / 8
     bufferlength = len( self.buffer )
     if( bufferlength > 0 ):
       lastEntry = self.buffer[bufferlength - 1]
@@ -66,31 +66,41 @@ class Ticker:
   def OnDraw(self,ctx,width,height,timestamp,deltaT):
     self.current_w = width
     self.current_h = height
+    #we want a font size that is readable for the current window height
+    font_height_device = height / 15
+    (font_width_user,font_height_user) = ctx.device_to_user_distance(1,font_height_device)
     #move the ul_x corner to the left a little according to deltaT
     #distance = speed * time = pixels/second * dt
     #here, I want a given character to traverse the screen in 4 seconds. 1e-9 scales nanoseconds (dt) to seconds.
     delta_x = ( width / 6.0 ) * deltaT * 1e-9
 
-    for entry in self.buffer:
-      entry.x = entry.x - delta_x
+    #draw a shaded background for messages to traverse (f there are any messages )
+    if( len( self.buffer ) > 0 ):
+      ctx.set_source_rgba (0, 0, 0, 0.5)
+      y = 7 * height / 8
+      ctx.rectangle ( 0, y - 1.5 * font_height_device, width, 2 * font_height_device )
+      ctx.fill()
 
-    buffercopy = self.buffer[:]
-    for (ientry,entry) in enumerate( buffercopy ):
+    for (ientry,entry) in enumerate( self.buffer ):
+      entry.x = entry.x - delta_x
       nick = entry.nick
       msg = entry.nick + ":" + entry.msg
+      ctx.select_font_face("Arial")
       ctx.set_source_rgba (1.0, 1.0, 1.0, 1.0)
-      ctx.set_font_size(24)
+      ctx.set_font_size(font_height_user)
       extents = ctx.text_extents(msg)
       entry.w = extents[2]
-      ctx.move_to( entry.x + 2, entry.y + 2 )
-      ctx.set_source_rgb(0,0,0)
-      ctx.show_text(msg)
+      #ctx.move_to( entry.x + 2, entry.y + 2 )
+      #ctx.set_source_rgb(0,0,0)
+      #ctx.show_text(msg)
       ctx.move_to( entry.x , entry.y )
       ctx.set_source_rgb(1,1,0)
       ctx.show_text(msg)
-      if( entry.x + entry.w < 0 ):
-        self.buffer.Pop( ientry )
 
+    if( len(self.buffer) > 0 ):
+      entry = self.buffer[0]
+      if( entry.x + entry.w < 0 ):
+        self.buffer.Pop(0)
 
 
 
