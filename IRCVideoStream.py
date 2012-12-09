@@ -55,8 +55,8 @@ class IRCOverlayVideoStream:
 
     self.msgbuffer = IRCMessageBuffer()
     #self.render = Simple()
-    self.render = Ticker()
-    #self.render = GamerStyle()
+    #self.render = Ticker()
+    self.render = GamerStyle()
 
     self.pipeline = gst.Pipeline("mypipeline")
 

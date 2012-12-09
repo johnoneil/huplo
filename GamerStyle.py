@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # vim: set ts=2 expandtab:
 
 #******************************************************************************
@@ -27,7 +25,7 @@ import pangocairo
 
 class GamerStyle:
   def __init__(self):
-    self.buffer = IRCMessageBuffer()
+    self.buffer = IRCMessageBuffer( bufferlength = 10 )
   def push(self, msg ):
     self.buffer.push(msg)
   def on_draw(self,ctx,width,height,timestamp,deltaT):
