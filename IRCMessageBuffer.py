@@ -11,37 +11,22 @@
 #
 #******************************************************************************
 
-class IRCMessage:
+class IRCMessage(object):
   def __init__(self, nick, vhost, msg ):
     self.nick = nick
     self.vhost = vhost
     self.msg = msg
 
-class IRCMessageBuffer:
+class IRCMessageBuffer(list):
   def __init__(self, bufferlength = 5):
-    self.buffer = []
+    super(IRCMessageBuffer, self).__init__()
     self.bufferlength = bufferlength
 
   def push(self,message):
-    self.buffer.insert(0,message)
-    if( len(self.buffer) > self.bufferlength ):
-      self.buffer.pop()
-
-  def append(self,message):
-    self.buffer.append(message)
-
-  def clear(self):
-    self.buffer.clear()
+    super(IRCMessageBuffer,self).insert(0, message)
+    if( len(self) > self.bufferlength ):
+      super(IRCMessageBuffer,self).pop()
 
   def message(self,index):
     return self.buffer[index]
-
-  def __len__(self):
-    return len(self.buffer)
-
-  def __getitem__(self, index):
-    return self.buffer[index]
-
-  def pop(self,item=0):
-    return self.buffer.pop(item)
 
