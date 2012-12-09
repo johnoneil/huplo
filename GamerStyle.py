@@ -40,17 +40,11 @@ class GamerStyle:
       nick = entry.nick
       msg = entry.nick + ":" + entry.msg
       totaltext = totaltext + msg + "\n"
-      #ctx.set_source_rgba (1.0, 1.0, 1.0, 1.0)
-      #ctx.set_font_size(24)
-      #extents = ctx.text_extents(msg)
-      #ctx.move_to( ul_x+2,ul_y+2 )
-    
-    #ctx.show_text(msg)
+
     ctx.move_to( ul_x,ul_y )
-    #ctx.set_source_rgb(1,1,0)
-    #ctx.show_text(msg)
-    #ul_y = ul_y + 1.25 * extents[3]
-    layout.set_text(totaltext)
+    attrs, text, accel = pango.parse_markup(totaltext)
+    layout.set_attributes( attrs )
+    layout.set_text( text )
     pangoCtx.update_layout(layout)
     (device_extents,logical_extents) = layout.get_pixel_extents()
     ctx.set_source_rgba(0,0,0,0.4)
