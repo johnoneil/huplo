@@ -24,15 +24,18 @@ class IRCMessageBuffer:
     self.buffer = []
     self.bufferlength = bufferlength
 
-  def Push(self,message):
-    self.buffer.append(message)
+  def push(self,message):
+    self.buffer.insert(0,message)
     if( len(self.buffer) > self.bufferlength ):
-      self.buffer.pop(0)
+      self.buffer.pop()
 
-  def Clear(self):
+  def append(self,message):
+    self.buffer.append(message)
+
+  def clear(self):
     self.buffer.clear()
 
-  def Message(self,index):
+  def message(self,index):
     return self.buffer[index]
 
   def __len__(self):
@@ -41,6 +44,6 @@ class IRCMessageBuffer:
   def __getitem__(self, index):
     return self.buffer[index]
 
-  def Pop(self,item=0):
+  def pop(self,item=0):
     return self.buffer.pop(item)
 

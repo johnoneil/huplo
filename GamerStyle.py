@@ -28,9 +28,9 @@ import pangocairo
 class GamerStyle:
   def __init__(self):
     self.buffer = IRCMessageBuffer()
-  def Push(self, msg ):
-    self.buffer.Push(msg)
-  def OnDraw(self,ctx,width,height,timestamp,deltaT):
+  def push(self, msg ):
+    self.buffer.push(msg)
+  def on_draw(self,ctx,width,height,timestamp,deltaT):
     pangoCtx = pangocairo.CairoContext(ctx)
     #layout the messages as follows:
     #nick column is 1/8 total screen width, right justified

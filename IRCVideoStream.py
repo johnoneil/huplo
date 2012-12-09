@@ -38,7 +38,7 @@ class MyHandler(DefaultCommandHandler):
     msg = msg.decode()
     rawnick = nick.split('!')[0]
     fullmsg =  rawnick  + ' : ' + msg.strip()
-    self.parent.render.Push( IRCMessage( rawnick,"www.someting.com",msg) )
+    self.parent.render.push( IRCMessage( rawnick,"www.someting.com",msg) )
 
 def MyHandlerFactory(data):
   def f(client):
@@ -55,8 +55,8 @@ class IRCOverlayVideoStream:
 
     self.msgbuffer = IRCMessageBuffer()
     #self.render = Simple()
-    #self.render = Ticker()
-    self.render = GamerStyle()
+    self.render = Ticker()
+    #self.render = GamerStyle()
 
     self.pipeline = gst.Pipeline("mypipeline")
 
@@ -67,7 +67,7 @@ class IRCOverlayVideoStream:
     self.playsink = gst.element_factory_make("playsink", "playsink")
     self.pipeline.add(self.playsink)
 
-    self.text = CustomCairoOverlay(self.render.OnDraw)
+    self.text = CustomCairoOverlay(self.render.on_draw)
     self.pipeline.add(self.text)
 
     self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")

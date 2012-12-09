@@ -21,9 +21,9 @@ class Simple:
   def __init__(self):
     self.buffer = IRCMessageBuffer()
     self.lastTimestamp = 0
-  def Push(self, msg ):
-    self.buffer.Push(msg)
-  def OnDraw(self,ctx,width,height,timestamp,deltaT):
+  def push(self, msg ):
+    self.buffer.push(msg)
+  def on_draw(self,ctx,width,height,timestamp,deltaT):
     ul_x = width/16
     ul_y = 2*height/3
     for entry in self.buffer:
@@ -53,7 +53,7 @@ class Ticker:
     self.current_w = 0
     self.current_h = 0
 
-  def Push(self, msg ):
+  def push(self, msg ):
     newmsg = TickerIRCMsg( msg )
     newmsg.x = self.current_w
     newmsg.y = 7 * self.current_h / 8
@@ -62,8 +62,10 @@ class Ticker:
       lastEntry = self.buffer[bufferlength - 1]
       if( lastEntry.x + lastEntry.w + 20 > self.current_w ):
         newmsg.x = lastEntry.x + lastEntry.w + 20
-    self.buffer.Push( newmsg )
-  def OnDraw(self,ctx,width,height,timestamp,deltaT):
+    #as the default behavior for the IRCMessagebuffer is to push to its front,
+    #we'll append this new message to the back (i.e. newest messages queued at the end )
+    self.buffer.append( newmsg )
+  def on_draw(self,ctx,width,height,timestamp,deltaT):
     self.current_w = width
     self.current_h = height
     #we want a font size that is readable for the current window height
@@ -100,7 +102,7 @@ class Ticker:
     if( len(self.buffer) > 0 ):
       entry = self.buffer[0]
       if( entry.x + entry.w < 0 ):
-        self.buffer.Pop(0)
+        self.buffer.pop(0)
 
 
 
