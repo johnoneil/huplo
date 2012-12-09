@@ -18,6 +18,7 @@ from IRCMessageBuffer import IRCMessageBuffer
 from IRCMessageBuffer import IRCMessage
 from IRCRender import Simple
 from IRCRender import Ticker
+from GamerStyle import GamerStyle
 
 import logging
 from oyoyo.client import IRCClient
@@ -54,7 +55,8 @@ class IRCOverlayVideoStream:
 
     self.msgbuffer = IRCMessageBuffer()
     #self.render = Simple()
-    self.render = Ticker()
+    #self.render = Ticker()
+    self.render = GamerStyle()
 
     self.pipeline = gst.Pipeline("mypipeline")
 
