@@ -36,7 +36,7 @@ from math import pi
 
 
 #Thanks to Dunk Fordyce, former author of oyoyo IRC library for this section
-class MyHandler(DefaultCommandHandler):
+class _MyHandler(DefaultCommandHandler):
   def __init__(self, client, parent):
     DefaultCommandHandler.__init__(self, client)
     self.parent = parent
@@ -44,12 +44,12 @@ class MyHandler(DefaultCommandHandler):
     msg = msg.decode()
     rawnick = nick.split('!')[0]
     fullmsg =  rawnick  + ' : ' + msg.strip()
-    self.parent.render.push( IRCMessage( rawnick,"www.someting.com",msg) )
+    self.parent.push( IRCMessage( rawnick,"www.someting.com",msg) )
 
-def MyHandlerFactory(data):
-  def f(client):
-    return MyHandler(client, data)
-  return f
+def _MyHandlerFactory(data):
+  def _f(client):
+    return _MyHandler(client, data)
+  return _f
 
 class IRCOverlayVideoStream(object):
   """
@@ -57,13 +57,18 @@ class IRCOverlayVideoStream(object):
   with an overlaid IRC chat.
   """
   def __init__(self, URI, host, port, channel, nick ):
-    """
-    Initialize and start rendered gstreamer video stream with IRC overlay.
-    URI: uri addrss of video stream input
-    host: IRC host to connect to
-    port: port on IRC host to connect to
-    channel: IRC channel on host to join on connection
-    nick: nick to use when connecting to IRC host    
+    """ Initialize and start rendered gstreamer video stream with IRC overlay.
+
+    :param URI: URI address of video stream to render.
+    :type URI: str.
+    :param host: IRC host to connect to.
+    :type host: str.
+    :param port: port on IRC host to connect to
+    :type port: int.
+    :param channel: IRC channel on host to join on connection
+    :type channel: str.
+    :param nick: nick to use when connecting to IRC host
+    :type nick: str.    
     """
     self.URI = URI
     self.host = host
@@ -94,27 +99,33 @@ class IRCOverlayVideoStream(object):
     self.convert2 = gst.element_factory_make("ffmpegcolorspace","convert2")
     self.pipeline.add(self.convert2)
 
-    self.uribin.connect("pad-added", self.demuxer_callback)
+    self.uribin.connect("pad-added", self._demuxer_callback)
     
     bus = self.pipeline.get_bus()
     bus.add_signal_watch()
-    bus.connect("message", self.on_message)  
+    bus.connect("message", self._on_message)  
 
     self.pipeline.set_state(gst.STATE_PAUSED)
     self.pipeline.set_state(gst.STATE_PLAYING)
 
-    self.cli = IRCClient(MyHandlerFactory(self), host=self.host, port=self.port, nick=self.nick, connect_cb=self.connect_cb)
+    self.cli = IRCClient(_MyHandlerFactory(self), host=self.host, port=self.port, nick=self.nick, connect_cb=self._connect_cb)
     self.conn = self.cli.connect()
 
     gobject.idle_add(self.conn.next)
 
-  def SetURI(self,URI):
-    self.uribin.set_property("uri", URI )
-
-  def connect_cb(self,cli):
+  def _connect_cb(self,cli):
     helpers.join(self.cli, self.channel)
 
-  def demuxer_callback(self, uribin, pad):
+  def push(self, msg):
+    """ Push an IRCMessage into the current IRC queue.
+
+    :param msg: The IRC message we'd like to push to the front of the current
+      queue
+    :type msg: IRCMessage.
+    """
+    self.render.push(msg)
+
+  def _demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
     name = caps[0].get_name()
     if( name == 'video/x-raw-rgb' ):
@@ -129,7 +140,7 @@ class IRCOverlayVideoStream(object):
 
     return True
 
-  def on_message(self, bus, message):
+  def _on_message(self, bus, message):
     t = message.type
     if t == gst.MESSAGE_EOS:
       self.pipeline.set_state(gst.STATE_NULL)
