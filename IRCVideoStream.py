@@ -1,6 +1,12 @@
 #!/usr/bin/python
-
 # vim: set ts=2 expandtab:
+"""
+Module: IRCVideoStream
+Desc: A simple gstreamer based way to monitor an IRC chat atop a video stream
+Author: John O'Neil
+Email:
+
+"""
 
 import sys, os
 import pygtk
@@ -45,8 +51,20 @@ def MyHandlerFactory(data):
     return MyHandler(client, data)
   return f
 
-class IRCOverlayVideoStream:
+class IRCOverlayVideoStream(object):
+  """
+    Primary module class. Instantiate to create a rendered video stream
+  with an overlaid IRC chat.
+  """
   def __init__(self, URI, host, port, channel, nick ):
+    """
+    Initialize and start rendered gstreamer video stream with IRC overlay.
+    URI: uri addrss of video stream input
+    host: IRC host to connect to
+    port: port on IRC host to connect to
+    channel: IRC channel on host to join on connection
+    nick: nick to use when connecting to IRC host    
+    """
     self.URI = URI
     self.host = host
     self.port = port
