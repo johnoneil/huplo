@@ -30,6 +30,7 @@ import logging
 from oyoyo.client import IRCClient
 from oyoyo.cmdhandler import DefaultCommandHandler
 from oyoyo import helpers
+from oyoyo import parse
 from optparse import OptionParser
 
 from math import pi
@@ -42,9 +43,37 @@ class _MyHandler(DefaultCommandHandler):
     self.parent = parent
   def privmsg(self, nick, chan, msg):
     msg = msg.decode()
-    rawnick = nick.split('!')[0]
-    fullmsg =  rawnick  + ' : ' + msg.strip()
-    self.parent.push( IRCMessage( rawnick,"www.someting.com",msg) )
+    name, rest = nick.split('!')
+    self.parent.push(IRCMessage(name, rest, msg))
+  def join(self,nick, chan ):
+    print "Join message: " + nick + " --> " + chan
+  def part(self, nick, chan):
+    print "Part message: " + nick + " --> " + chan
+  def notice(self, sender, nick, msg):
+    print "notice: " + sender + " --> " + nick + " --> " + msg
+  def names(self,prefix,args):
+    print "names: " + prefix + " --> " + args
+  def mode(self, usr, nick, mode):
+    print "mode: " + usr + " --> " + nick + " --> " + mode
+  def topic(self,prefix,args,msg):
+    print "topic: " + prefix + " --> " + args + " --> " + msg
+  def rpl_topic(self,prefix,args,msg):
+    print "rpl_topic: " + prefix + " --> " + args + " --> " + msg
+  def rpl_namreply(self,prefix,args,msg):
+    print "rpl_namreply: " + prefix + " --> " + args + " --> " + msg
+  def welcome(self, host, nick, msg):
+    print "welcome: " + host + " --> " + nick + " --> " + msg
+  def currenttopic(self,host,nick,chan,topic):
+    print "currenttopic: " + host + " --> " + nick + " --> " + chan + " --> " + topic
+  def namreply(self, host, nick, sort, chan, names):
+    print "namreply: " + host + " --> " + nick + " --> " + sort + "-->" + chan + " --> " + names
+  def quit( self, nick, msg ):
+    print "quit:" + nick + " --> " + msg
+  def kick( self, usr, chan, nick, msg ):
+    print "kick: " + usr + " --> " + chan + " --> " + nick + " --> " + msg
+  def error( self, nick, msg ):
+    print "error: " + nick + " --> " + msg
+    
 
 def _MyHandlerFactory(data):
   def _f(client):
