@@ -12,7 +12,7 @@
 
 from IRCMessageBuffer import IRCMessage
 from IRCMessageBuffer import IRCMessageBuffer
-from math import pi
+import AnimatedMessageQueue
 import cairo
 import pango
 import pangocairo
