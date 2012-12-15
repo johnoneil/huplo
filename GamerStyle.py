@@ -12,7 +12,7 @@
 
 from IRCMessageBuffer import IRCMessage
 from IRCMessageBuffer import IRCMessageBuffer
-import AnimatedMessageQueue
+from AnimatedMessageQueue import AnimatedMessageQueue
 import cairo
 import pango
 import pangocairo
@@ -26,9 +26,13 @@ import pangocairo
 class GamerStyle:
   def __init__(self):
     self.buffer = IRCMessageBuffer( bufferlength = 10 )
+    self._messages = AnimatedMessageQueue(x = 10, y = 10)
   def push(self, msg ):
     self.buffer.push(msg)
+    self._messages.notice(msg.msg)
   def on_draw(self,ctx,width,height,timestamp,deltaT):
+    self._messages.update(deltaT)
+    self._messages.render(ctx)
     pangoCtx = pangocairo.CairoContext(ctx)
     #layout the messages as follows:
     #nick column is 1/8 total screen width, right justified

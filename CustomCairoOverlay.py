@@ -91,7 +91,7 @@ class CustomCairoOverlay(gst.Element):
 
     try:
       if(self.customDrawHandler is not None):
-        self.customDrawHandler(ctx,width,height,buf.timestamp,deltaT)
+        self.customDrawHandler(ctx,width,height,buf.timestamp*1e-9,deltaT*1e-9)
     except:
       print "Failed cairo render"
       traceback.print_exc()

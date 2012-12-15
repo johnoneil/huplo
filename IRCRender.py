@@ -71,8 +71,8 @@ class Ticker:
     (font_width_user,font_height_user) = ctx.device_to_user_distance(1,font_height_device)
     #move the ul_x corner to the left a little according to deltaT
     #distance = speed * time = pixels/second * dt
-    #here, I want a given character to traverse the screen in 4 seconds. 1e-9 scales nanoseconds (dt) to seconds.
-    delta_x = ( width / 6.0 ) * deltaT * 1e-9
+    #here, I want a given character to traverse the screen in 4 seconds.
+    delta_x = ( width / 6.0 ) * deltaT 
 
     #draw a shaded background for messages to traverse (f there are any messages )
     if( len( self.buffer ) > 0 ):
