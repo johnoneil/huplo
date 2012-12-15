@@ -296,13 +296,13 @@ class Tween(object):
             # print "startvalue for %s: %s" % (k,startVal)
             
             if func:
-                print "yes func"
+                #print "yes func"
                 try:
-                    print funcName.replace("set", "get")
+                    #print funcName.replace("set", "get")
                     getFunc = getattr(self.target, funcName.replace("set", "get") )
                     startVal = getFunc()
                 except:
-                    print "start value 0"
+                    #print "start value 0"
                     # no start value, assume its 0
                     # but make sure the start and change
                     # dataTypes match :)

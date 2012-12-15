@@ -20,27 +20,15 @@ class color(object):
   @property
   def r(self):
     return self._r
-  @r.setter
-  def r(self,value):
-    self._r = value
   @property
   def g(self):
     return self._g
-  @g.setter
-  def g(self,value):
-    self._g = value
   @property
   def b(self):
     return self._b
-  @b.setter
-  def b(self,value):
-    self._b = value
   @property
   def a(self):
     return self._a
-  @a.setter
-  def a(self,value):
-    self._a = value
 
   def set_r(self,value):
     self._r = value
@@ -51,12 +39,18 @@ class color(object):
   def set_a(self,value):
     self._a = value
 
-  def fade_out(self, t):
-    self._tweener.addTween(self, set_a=0.0, tweenTime = t, tweenType=self._tweener.OUT_BOUNCE)
-  def fade_in(self, t):
-    self._tweener.addTween(self, set_a=1.0, tweenTime = t, tweenType=self._tweener.OUT_BOUNCE)
-  def to(self, rv, gv, bv, av, t):
-    self._tweener.addTween(self, set_r=rv, set_g=gv, set_b=bv, set_a=av, tweenTime = t, tweenType=self._tweener.OUT_QUAD)
+  def fade_out(self, t, tween_type=None):
+    if not tween_type:
+      tween_type = self._tweener.LINEAR
+    self._tweener.addTween(self, set_a=0.0, tweenTime = t, tweenType=tween_type)
+  def fade_in(self, t, tween_type=None):
+    if not tween_type:
+      tween_type = self._tweener.LINEAR
+    self._tweener.addTween(self, set_a=1.0, tweenTime = t, tweenType=tween_type)
+  def to(self, rv, gv, bv, av, t, tween_type=None):
+    if not tween_type:
+      tween_type = self._tweener.LINEAR
+    self._tweener.addTween(self, set_r=rv, set_g=gv, set_b=bv, set_a=av, tweenTime = t, tweenType=tween_type)
   def update(self,dt):
     self._tweener.update(dt)
 
@@ -88,15 +82,10 @@ class pos(object):
   @property
   def x(self):
     return self._x
-  @x.setter
-  def x(self,value):
-    self._x = value
+
   @property
   def y(self):
     return self._y
-  @y.setter
-  def y(self,value):
-    self._y = value
 
   def set_x(self,value):
     self._x = value
@@ -104,14 +93,20 @@ class pos(object):
   def set_y(self,value):
     self._y = value
 
-  def to(self, xv, yv, t):
-    self._tweener.addTween(self, set_x=xv, set_y=yv, tweenTime = t, tweenType=self._tweener.OUT_BOUNCE)
+  def to(self, xv, yv, t, tween_type=None):
+    if not tween_type:
+      tween_type = self._tweener.LINEAR
+    self._tweener.addTween(self, set_x=xv, set_y=yv, tweenTime=t, tweenType=tween_type)
 
   def update(self,dt):
     self._tweener.update(dt)
 
 class AnimatedMessageQueEntry(object):
-  def __init__(self, text, c = color.white() , p = pos(0.0,0.0) ):
+  def __init__(self, text, c=None , p = None ):
+    if p is None:
+      p = pos(0.0,0.0)
+    if c is None:
+      c = color.white()
     self._pos = p
     self._color = c
     self._text = text
@@ -120,10 +115,10 @@ class AnimatedMessageQueEntry(object):
     self._color.update(dt)
     self._pos.update(dt)
 
-  def render(self,ctx):
+  def render(self,ctx, offset_x, offset_y):
     ctx.select_font_face("Arial")
     ctx.set_font_size(22)
-    ctx.move_to( self._pos._x, self._pos._y)
+    ctx.move_to( self._pos._x + offset_x, self._pos._y + offset_y)
     ctx.set_source_rgba(self._color.r, self._color.g, self._color.b, self._color.a)
     ctx.show_text(self._text)
 
@@ -137,10 +132,14 @@ class AnimatedMessageQueue(list):
     if(len(self) > self._length):
       self.pop()
 
-  def notice(self, text, pos=pos(0.0,0.0), color=color.white()):
-    new_entry = AnimatedMessageQueEntry(text, c=color,p=pos)
+  def notice(self, text, po=None, co=None):
+    if po is None:
+      po = pos(0.0,0.0)
+    if co is None:
+      co = color.white()
+    new_entry = AnimatedMessageQueEntry(text, c=co,p=po)
     self.push( new_entry )
-    new_entry._pos.to( pos._x + 200.0, pos._y + 200.0, 5.0)
+    new_entry._pos.to( new_entry._pos._x + 200.0, new_entry._pos._y + 200.0, 5.0)
 
   def update(self, deltaT):
     for item in self:
@@ -148,5 +147,5 @@ class AnimatedMessageQueue(list):
 
   def render(self, ctx):
     for item in self:
-      item.render(ctx)
+      item.render(ctx, self._pos.x, self._pos.y)
     
