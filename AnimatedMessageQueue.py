@@ -30,12 +30,20 @@ class color(object):
   def a(self):
     return self._a
 
+  def get_r(self):
+    return self._r
   def set_r(self,value):
     self._r = value
+  def get_g(self):
+    return self._g
   def set_g(self,value):
     self._g = value
+  def get_b(self):
+    return self._b  
   def set_b(self,value):
     self._b = value
+  def get_a(self):
+    return self._a  
   def set_a(self,value):
     self._a = value
 
@@ -87,8 +95,14 @@ class pos(object):
   def y(self):
     return self._y
 
+  def get_x(self):
+    return self._x
+
   def set_x(self,value):
     self._x = value
+
+  def get_y(self):
+    return self._y  
 
   def set_y(self,value):
     self._y = value
@@ -131,6 +145,7 @@ class Animation(object):
     is a Pause.
   """
   def __init__(self):
+    super(Animation, self).__init__()
     self._sibling = None
     self._child = None
 
@@ -214,26 +229,87 @@ class Animation(object):
 
 class Pause(Animation):
   def __init__(self, timeSec):
+    super(Pause,self).__init__()
     self._timeSec(timeSec)
     self._timeElapsed = 0.0
   def Update(self, dt):
     self._timeElapsed = self._timeElapsed + dt
     return self.UpdateSibling(dt, (self._timeElapsed >= self._timeSec) )
 
-class MoveTo(Animation):
-  def __init__(self, obj, pos, time_seconds, tween_type = None):
+class FadeIn(Animation):
+  def __init__(self, obj, time_seconds, tween_type = None):
+    super(FadeIn,self).__init__()
     self._obj = obj
-    self._pos = pos
     self._time_seconds = time_seconds
-    self._tweener = pyTween.Tweener()
+    self._tweener = pyTweener.Tweener()
     self._tween_type = self._tweener.LINEAR
     if( tween_type is not None):
       self._tween_type = tween_type
-    self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0)
+    self._tween = None
   
   def Update(self, dt):
-    self._tween.Update(dt)
-    return self.UpdateSibling(dt, self._tween.complete )
+    if( self._tween is None):
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_a=1.0)
+    self._tween.update(dt)
+    return self.UpdateSiblings(dt, self._tween.complete )
+
+class FadeOut(Animation):
+  def __init__(self, obj, time_seconds, tween_type = None):
+    super(FadeOut,self).__init__()
+    self._obj = obj
+    self._time_seconds = time_seconds
+    self._tweener = pyTweener.Tweener()
+    self._tween_type = self._tweener.LINEAR
+    if( tween_type is not None):
+      self._tween_type = tween_type
+    self._tween = None
+  
+  def Update(self, dt):
+    if( self._tween is None):
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_a=0.5)
+    self._tween.update(dt)
+    return self.UpdateSiblings(dt, self._tween.complete )
+
+class ColorTo(Animation):
+  def __init__(self, obj, r, g, b, a, time_seconds, tween_type = None):
+    super(ColorTo,self).__init__()
+    self._target = color(r, g, b, a)
+    self._obj = obj
+    self._time_seconds = time_seconds
+    self._tweener = pyTweener.Tweener()
+    self._tween_type = self._tweener.LINEAR
+    if( tween_type is not None):
+      self._tween_type = tween_type
+    self._tween = None
+  
+  def Update(self, dt):
+    if( self._tween is None):
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_r=self._target.r,set_g=self._target.g,set_b=self._target.b,set_a=self._target.a)
+    self._tween.update(dt)
+    return self.UpdateSiblings(dt, self._tween.complete )
+
+  
+
+class MoveTo(Animation):
+  def __init__(self, obj, pos, time_seconds, tween_type = None):
+    super(MoveTo,self).__init__()
+    self._obj = obj
+    self._pos = pos
+    self._time_seconds = time_seconds
+    self._tweener = pyTweener.Tweener()
+    self._tween_type = self._tweener.LINEAR
+    if( tween_type is not None):
+      self._tween_type = tween_type
+    self._tween = None
+    #self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_x=pos.x, set_y=pos.y)
+    #self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, **kwargs)
+    #self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0)
+  
+  def Update(self, dt):
+    if( self._tween is None):
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_x=self._pos.x, set_y=self._pos.y)
+    self._tween.update(dt)
+    return self.UpdateSiblings(dt, self._tween.complete )
     
 
 class TextBox(object):
@@ -255,6 +331,7 @@ class AnimatedMessageQueue(list):
   def __init__(self,  x, y, length = 5):
     self._length = length
     self._pos = pos(x,y)
+    self._animation = None
 
   def push(self, item):
     self.insert(0, item)
@@ -268,11 +345,18 @@ class AnimatedMessageQueue(list):
       co = color.white()
     new_entry = AnimatedMessageQueEntry(text, c=co,p=po)
     self.push( new_entry )
-    new_entry._pos.to( new_entry._pos._x + 200.0, new_entry._pos._y + 200.0, 5.0)
+    new_entry._color.set_a(0.0)
+    #self._animation = FadeIn(new_entry._color,3.0).Then(MoveTo(new_entry._pos,pos(100,100),4.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0))
+    #self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0))
+    self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0)).Then(FadeOut(new_entry._color,3.0))
+    self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0)).Then(ColorTo(new_entry._color,1.0,0.0,0.0,1.0,3.0))
+    #new_entry._pos.to( new_entry._pos._x + 200.0, new_entry._pos._y + 200.0, 5.0)
 
-  def update(self, deltaT):
+  def update(self, dt):
+    if( self._animation is not None):
+      self._animation = self._animation.Update(dt)
     for item in self:
-      item.update(deltaT)
+      item.update(dt)
 
   def render(self, ctx):
     for item in self:
