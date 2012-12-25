@@ -17,6 +17,9 @@ class color(object):
     self._a = a
     self._tweener = pyTweener.Tweener()
 
+  def Print(self):
+    print "r:{},g:{},b:{},a:{}".format(self._r,self._g,self._b,self._a)
+
   @property
   def r(self):
     return self._r
@@ -126,8 +129,9 @@ class AnimatedMessageQueEntry(object):
     self._text = text
 
   def update(self, dt):
-    self._color.update(dt)
-    self._pos.update(dt)
+    pass
+    #self._color.update(dt)
+    #self._pos.update(dt)
 
   def render(self,ctx, offset_x, offset_y):
     ctx.select_font_face("Arial")
@@ -249,7 +253,8 @@ class FadeIn(Animation):
   
   def Update(self, dt):
     if( self._tween is None):
-      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_a=1.0)
+      delta_a =  1.0 - self._obj.get_a()
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_a=delta_a)
     self._tween.update(dt)
     return self.UpdateSiblings(dt, self._tween.complete )
 
@@ -266,13 +271,14 @@ class FadeOut(Animation):
   
   def Update(self, dt):
     if( self._tween is None):
-      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_a=0.5)
+      delta_a =  0.0 - self._obj.get_a()
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_a=delta_a)
     self._tween.update(dt)
     return self.UpdateSiblings(dt, self._tween.complete )
 
-class ColorTo(Animation):
+class ColorToRelative(Animation):
   def __init__(self, obj, r, g, b, a, time_seconds, tween_type = None):
-    super(ColorTo,self).__init__()
+    super(ColorToRelative,self).__init__()
     self._target = color(r, g, b, a)
     self._obj = obj
     self._time_seconds = time_seconds
@@ -288,26 +294,68 @@ class ColorTo(Animation):
     self._tween.update(dt)
     return self.UpdateSiblings(dt, self._tween.complete )
 
-  
-
-class MoveTo(Animation):
-  def __init__(self, obj, pos, time_seconds, tween_type = None):
-    super(MoveTo,self).__init__()
+class ColorToAbsolute(Animation):
+  def __init__(self, obj, r, g, b, a, time_seconds, tween_type = None):
+    super(ColorToAbsolute,self).__init__()
+    self._target = color(r, g, b, a)
     self._obj = obj
-    self._pos = pos
     self._time_seconds = time_seconds
     self._tweener = pyTweener.Tweener()
     self._tween_type = self._tweener.LINEAR
     if( tween_type is not None):
       self._tween_type = tween_type
     self._tween = None
-    #self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_x=pos.x, set_y=pos.y)
-    #self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, **kwargs)
-    #self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0)
+  
+  def Update(self, dt):
+    if( self._tween is None):
+      #pytweener (mysteriously) only uses relative tween values (tween to current value -1, e.g.)
+      #here we assume input arguments are absolute, so we need to calculate deltas and pass them to the tween
+      delta_r = self._target.get_r() - self._obj.get_r() 
+      delta_g = self._target.get_g() - self._obj.get_g() 
+      delta_b = self._target.get_b() - self._obj.get_b()
+      delta_a = self._target.get_a() - self._obj.get_a() 
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_r=delta_r,set_g=delta_g,set_b=delta_b,set_a=delta_a)
+    self._tween.update(dt)
+    return self.UpdateSiblings(dt, self._tween.complete )
+
+  
+
+class MoveToRelative(Animation):
+  def __init__(self, obj, x, y, time_seconds, tween_type = None):
+    super(MoveToRelative,self).__init__()
+    self._obj = obj
+    self._pos = pos(x, y)
+    self._time_seconds = time_seconds
+    self._tweener = pyTweener.Tweener()
+    self._tween_type = self._tweener.LINEAR
+    if( tween_type is not None):
+      self._tween_type = tween_type
+    self._tween = None
   
   def Update(self, dt):
     if( self._tween is None):
       self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_x=self._pos.x, set_y=self._pos.y)
+    self._tween.update(dt)
+    return self.UpdateSiblings(dt, self._tween.complete )
+
+class MoveToAbsolute(Animation):
+  def __init__(self, obj, x, y, time_seconds, tween_type = None):
+    super(MoveToAbsolute, self).__init__()
+    self._obj = obj
+    self._pos = pos(x,y)
+    self._time_seconds = time_seconds
+    self._tweener = pyTweener.Tweener()
+    self._tween_type = self._tweener.LINEAR
+    if( tween_type is not None):
+      self._tween_type = tween_type
+    self._tween = None
+  
+  def Update(self, dt):
+    if( self._tween is None):
+      #calculate deltas since pytweener only tweens relative values
+      delta_x = self._pos.get_x() - self._obj.get_x()
+      delta_y = self._pos.get_y() - self._obj.get_y()
+      self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_x=delta_x, set_y=delta_y)
     self._tween.update(dt)
     return self.UpdateSiblings(dt, self._tween.complete )
     
@@ -348,9 +396,12 @@ class AnimatedMessageQueue(list):
     new_entry._color.set_a(0.0)
     #self._animation = FadeIn(new_entry._color,3.0).Then(MoveTo(new_entry._pos,pos(100,100),4.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0))
     #self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0))
-    self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0)).Then(FadeOut(new_entry._color,3.0))
-    self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0)).Then(ColorTo(new_entry._color,1.0,0.0,0.0,1.0,3.0))
+    self._animation = MoveToRelative(new_entry._pos,100.0,100.0,4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveToRelative(new_entry._pos,200.0,0.0,4.0)).Then(MoveToRelative(new_entry._pos,0.0,200.0,4.0)).Then(FadeOut(new_entry._color,4.0))
+    #self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0)).Then(ColorTo(new_entry._color,1.0,0.0,0.0,1.0,3.0))
+    #self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).Then(ColorTo(new_entry._color,1.0,0.0,0.0,1.0,3.0))
     #new_entry._pos.to( new_entry._pos._x + 200.0, new_entry._pos._y + 200.0, 5.0)
+    #self._animation = ColorToAbsolute(new_entry._color,r=1.0,g=0.0,b=0.0,a=1.0,time_seconds=4.0)
+    #self._animation = MoveToRelative(new_entry._pos, 100.0, 100.0, 4.0)#.And(FadeIn(new_entry._color,4.0))
 
   def update(self, dt):
     if( self._animation is not None):
