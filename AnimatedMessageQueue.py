@@ -118,28 +118,6 @@ class pos(object):
   def update(self,dt):
     self._tweener.update(dt)
 
-class AnimatedMessageQueEntry(object):
-  def __init__(self, text, c=None , p = None ):
-    if p is None:
-      p = pos(0.0,0.0)
-    if c is None:
-      c = color.white()
-    self._pos = p
-    self._color = c
-    self._text = text
-
-  def update(self, dt):
-    pass
-    #self._color.update(dt)
-    #self._pos.update(dt)
-
-  def render(self,ctx, offset_x, offset_y):
-    ctx.select_font_face("Arial")
-    ctx.set_font_size(22)
-    ctx.move_to( self._pos._x + offset_x, self._pos._y + offset_y)
-    ctx.set_source_rgba(self._color.r, self._color.g, self._color.b, self._color.a)
-    ctx.show_text(self._text)
-
 class Animation(object):
   """Basic animation queueable object. Top of a tree structure that describes
     various actions that will be performed (updated) simultaneous to the 
@@ -276,6 +254,7 @@ class FadeOut(Animation):
     self._tween.update(dt)
     return self.UpdateSiblings(dt, self._tween.complete )
 
+
 class ColorToRelative(Animation):
   def __init__(self, obj, r, g, b, a, time_seconds, tween_type = None):
     super(ColorToRelative,self).__init__()
@@ -318,7 +297,15 @@ class ColorToAbsolute(Animation):
     self._tween.update(dt)
     return self.UpdateSiblings(dt, self._tween.complete )
 
-  
+class ColorTo(object):
+  def ColorToRel(obj, r, g, b, a, time_seconds, tween_type = None):
+    return ColorToRelative(obj._color, r, g, b, a, time_seconds, tween_type)
+  def ColorTo(obj, r, g, b, a, time_seconds, tween_type =  None):
+    return ColorToAbsolute(obj._color, r, g, b, a, time_seconds, tween_type)
+  def FadeIn(obj, time_seconds, tween_type = None):
+    return FadeIn(obj._color, time_seconds, tween_type)
+  def FadeOut(obj, time_seconds, tween_type = None):
+    return FadeOut(obj._color, time_seconds, tween_type)
 
 class MoveToRelative(Animation):
   def __init__(self, obj, x, y, time_seconds, tween_type = None):
@@ -358,7 +345,12 @@ class MoveToAbsolute(Animation):
       self._tween = pyTweener.Tween(self._obj, self._time_seconds, self._tween_type, None, None, 0.0, set_x=delta_x, set_y=delta_y)
     self._tween.update(dt)
     return self.UpdateSiblings(dt, self._tween.complete )
-    
+ 
+class MoveTo(object):
+  def MoveToRel(obj, x, y, time_seconds, tween_type = None):
+    return MoveToRelative(obj._pos, x, y, time_seconds, tween_type)
+  def MoveToAbs(obj, x, y, time_seconds, tween_type = None):
+    return MoveToAbsolute(obj._pos, x, y, time_seconds, tween_type)   
 
 class TextBox(object):
   def __init__(self, text, pos, text_color = None, bg_color = None, font = None):
@@ -374,6 +366,27 @@ class TextBox(object):
 
   def MoveTo(self, pos, time_seconds, tween_type = None):
     return MoveTo(self, pos, time_seconds, tween_type)
+
+class AnimatedMessageQueueEntry(MoveTo, ColorTo):
+  def __init__(self, text, c=None , p = None ):
+    super(AnimatedMessageQueueEntry,self).__init__()
+    if p is None:
+      p = pos(0.0,0.0)
+    if c is None:
+      c = color.white()
+    self._pos = p
+    self._color = c
+    self._text = text
+
+  def update(self, dt):
+    pass
+
+  def render(self,ctx, offset_x, offset_y):
+    ctx.select_font_face("Arial")
+    ctx.set_font_size(22)
+    ctx.move_to( self._pos._x + offset_x, self._pos._y + offset_y)
+    ctx.set_source_rgba(self._color.r, self._color.g, self._color.b, self._color.a)
+    ctx.show_text(self._text)
 
 class AnimatedMessageQueue(list):
   def __init__(self,  x, y, length = 5):
@@ -391,17 +404,15 @@ class AnimatedMessageQueue(list):
       po = pos(0.0,0.0)
     if co is None:
       co = color.white()
-    new_entry = AnimatedMessageQueEntry(text, c=co,p=po)
+    new_entry = AnimatedMessageQueueEntry(text, c=co,p=po)
     self.push( new_entry )
     new_entry._color.set_a(0.0)
-    #self._animation = FadeIn(new_entry._color,3.0).Then(MoveTo(new_entry._pos,pos(100,100),4.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0))
-    #self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0))
-    self._animation = MoveToRelative(new_entry._pos,100.0,100.0,4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveToRelative(new_entry._pos,200.0,0.0,4.0)).Then(MoveToRelative(new_entry._pos,0.0,200.0,4.0)).Then(FadeOut(new_entry._color,4.0))
-    #self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).And(FadeIn(new_entry._color,3.0)).Then(MoveTo(new_entry._pos,pos(200,0),4.0)).Then(MoveTo(new_entry._pos,pos(0,200),4.0)).Then(ColorTo(new_entry._color,1.0,0.0,0.0,1.0,3.0))
-    #self._animation = MoveTo(new_entry._pos,pos(100,100),4.0).Then(ColorTo(new_entry._color,1.0,0.0,0.0,1.0,3.0))
-    #new_entry._pos.to( new_entry._pos._x + 200.0, new_entry._pos._y + 200.0, 5.0)
-    #self._animation = ColorToAbsolute(new_entry._color,r=1.0,g=0.0,b=0.0,a=1.0,time_seconds=4.0)
-    #self._animation = MoveToRelative(new_entry._pos, 100.0, 100.0, 4.0)#.And(FadeIn(new_entry._color,4.0))
+    animation = new_entry.MoveToRel(100.0, 100.0, 4.0).And(new_entry.FadeIn(3.0)).Then(new_entry.MoveToRel(100.0,0.0,4.0)).Then(new_entry.MoveToRel(0.0,100.0,4.0)).Then(new_entry.FadeOut(3.0))
+    if( self._animation is None ):
+      self._animation = animation
+    else:
+      self._animation.Then(animation)
+
 
   def update(self, dt):
     if( self._animation is not None):
