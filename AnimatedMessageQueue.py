@@ -142,13 +142,20 @@ class Animation(object):
       :returns a reference to the current object (self) or the next if
       this animation is complete.
     """
+    #update all siblings. This eliminates completed siblings via State pattern
     if(self._sibling is not None):
       self._sibling = self._sibling.Update(dt)
+    #If we've completed this task, we'll return the first child (via state pattern again)
+    #but don't forget to move siblings to the finished task to the next child.
+    #if there is no child, however, return the first sibling.
+    if( complete is not True):
       return self
-    elif( complete is not True):
-      return self
-    else:
+
+    if( self._child is not None):
+      self._child.And( self._sibling )
       return self._child
+    else:
+      return self._sibling
 
   def Update(self, dt):
     """Update the animation.
@@ -184,6 +191,9 @@ class Animation(object):
     :type sibling: Animation
     :returns Last sibling in the current animation chain, so we can chain calls.
     """
+    if( sibling is None):
+      return self
+
     if( self._sibling is not None):
       self._sibling.And(sibling)
     else:
@@ -202,6 +212,9 @@ class Animation(object):
       animation1 = animation1.Update(1.0)
     >>>
     """
+    if(child is None):
+      return self
+
     if( self._child is not None):
       self._child.Then(child)
     else:
@@ -411,7 +424,7 @@ class AnimatedMessageQueue(list):
     if( self._animation is None ):
       self._animation = animation
     else:
-      self._animation.Then(animation)
+      self._animation.And(animation)
 
 
   def update(self, dt):
