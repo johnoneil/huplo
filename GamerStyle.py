@@ -43,8 +43,8 @@ class GamerStyle:
     nick_ul_y = 2*height/3
     nick_width = width/8
     msg_width = 2*width/8
-    gutter_width = 10
-    gutter_height = 5
+    gutter_width = 5
+    gutter_height = 1
     msg_ul_x = nick_ul_x + nick_width + gutter_width
     msg_ul_y = nick_ul_y
     
@@ -77,10 +77,10 @@ class GamerStyle:
 
       #the height of the total entry is the greater of the nick and msg heights
       total_height = 0
-      if( msg_dextents[3] > nick_dextents[3]):
-        total_height = msg_dextents[3]
+      if( msg_lextents[3] > nick_lextents[3]):
+        total_height = msg_lextents[3]
       else:
-        total_height = nick_dextents[3]
+        total_height = nick_lextents[3]
     
       #draw the nick entry
       ctx.move_to( nick_ul_x,nick_ul_y )
