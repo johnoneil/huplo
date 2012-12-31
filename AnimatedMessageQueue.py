@@ -398,7 +398,11 @@ class AnimatedMessageQueueEntry(MoveTo, ColorTo):
     ctx.select_font_face("Arial")
     ctx.set_font_size(22)
     ctx.move_to( self._pos._x + offset_x, self._pos._y + offset_y)
+    #ctx.text_path(self._text)
+    #ctx.set_source_rgba(0,0,0,self._color.a)
+    #ctx.stroke_preserve()
     ctx.set_source_rgba(self._color.r, self._color.g, self._color.b, self._color.a)
+    #ctx.fill()
     ctx.show_text(self._text)
 
 class AnimatedMessageQueue(list):
