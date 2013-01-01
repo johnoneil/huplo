@@ -17,18 +17,12 @@ import cairo
 import pango
 import pangocairo
 
-#class GamerIRCMessage(IRCMessage):
-#  def __init__(self,nick,vhost,message):
-#    IRCMessage.__init__(self,nick,vhost,message)
-#    self.layout = None
-#    self.
-
 class GamerStyle:
   def __init__(self):
-    self.buffer = IRCMessageBuffer( bufferlength = 10 )
+    self._buffer = []
     self._messages = AnimatedMessageQueue(x = 10, y = 10)
   def push(self, msg ):
-    self.buffer.push(msg)
+    self._buffer.insert(0,msg)
     self._messages.notice(msg.msg)
   def on_draw(self,ctx,width,height,timestamp,deltaT):
     self._messages.update(deltaT)
@@ -36,19 +30,20 @@ class GamerStyle:
     pangoCtx = pangocairo.CairoContext(ctx)
     #layout the messages as follows:
     #nick column is 1/8 total screen width, right justified
-    #message column is 2/8 total screen width, left justified with indent
-    #top of messages is at 2/3 down the screen
-    #left border of messages is 1/16 across the screen
-    nick_ul_x = width/16
-    nick_ul_y = 2*height/3
+    #message column is 3/8 total screen width, left justified
+    #top of messages is at 1/2 down the screen
+    #left border of messages is 1/32 across the screen
+    nick_ul_x = width/32
+    nick_ul_y = height/2
     nick_width = width/8
-    msg_width = 2*width/8
+    msg_width = 3*width/8
     gutter_width = 5
     gutter_height = 1
     msg_ul_x = nick_ul_x + nick_width + gutter_width
     msg_ul_y = nick_ul_y
     
-    for entry in self.buffer:
+    entries_that_fit = 0
+    for entry in self._buffer:
       nick = entry.nick
       msg = entry.msg
 
@@ -81,6 +76,11 @@ class GamerStyle:
         total_height = msg_lextents[3]
       else:
         total_height = nick_lextents[3]
+
+      if( nick_ul_y + total_height > height ):
+        break
+      else:
+        entries_that_fit = entries_that_fit + 1
     
       #draw the nick entry
       #ctx.move_to( nick_ul_x,nick_ul_y )
@@ -107,6 +107,11 @@ class GamerStyle:
       pangoCtx.show_layout(msglayout)
 
       nick_ul_y = nick_ul_y + total_height + gutter_height
-      msg_ul_y = nick_ul_y 
+      msg_ul_y = nick_ul_y
+
+    #make sure the buffer only keeps entries that fit
+    while(len(self._buffer) > entries_that_fit):
+      self._buffer.pop()
+      
 
 
