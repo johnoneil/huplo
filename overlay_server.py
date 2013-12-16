@@ -19,10 +19,16 @@ import argparse
   
 class ChatServer(dbus.service.Object):
 
+  def __init__(self, session_bus, object_path, client=None):
+    dbus.service.Object.__init__(self, session_bus, object_path)
+    self._client = client
+
   @dbus.service.method("com.VideoOverlay.ChatInterface",
                        in_signature='s', out_signature='s')
   def HelloWorld(self, hello_message):
     print hello_message
+    if self._client:
+      self._client.OnMessage(hello_message)
     return 'echo: ' + hello_message
 
   @dbus.service.method("com.VideoOverlay.ChatInterface",

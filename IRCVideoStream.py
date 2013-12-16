@@ -35,76 +35,21 @@ from optparse import OptionParser
 
 from math import pi
 
-
-#Thanks to Dunk Fordyce, former author of oyoyo IRC library for this section
-class _MyHandler(DefaultCommandHandler):
-  def __init__(self, client, parent):
-    DefaultCommandHandler.__init__(self, client)
-    self.parent = parent
-  def privmsg(self, nick, chan, msg):
-    msg = msg.decode()
-    name, rest = nick.split('!')
-    self.parent.push(IRCMessage(name, rest, msg))
-  def join(self,nick, chan ):
-    print "Join message: " + nick + " --> " + chan
-  def part(self, nick, chan):
-    print "Part message: " + nick + " --> " + chan
-  def notice(self, sender, nick, msg):
-    print "notice: " + sender + " --> " + nick + " --> " + msg
-  def names(self,prefix,args):
-    print "names: " + prefix + " --> " + args
-  def mode(self, usr, nick, mode):
-    print "mode: " + usr + " --> " + nick + " --> " + mode
-  def topic(self,prefix,args,msg):
-    print "topic: " + prefix + " --> " + args + " --> " + msg
-  def rpl_topic(self,prefix,args,msg):
-    print "rpl_topic: " + prefix + " --> " + args + " --> " + msg
-  def rpl_namreply(self,prefix,args,msg):
-    print "rpl_namreply: " + prefix + " --> " + args + " --> " + msg
-  def welcome(self, host, nick, msg):
-    print "welcome: " + host + " --> " + nick + " --> " + msg
-  def currenttopic(self,host,nick,chan,topic):
-    print "currenttopic: " + host + " --> " + nick + " --> " + chan + " --> " + topic
-  def namreply(self, host, nick, sort, chan, names):
-    print "namreply: " + host + " --> " + nick + " --> " + sort + "-->" + chan + " --> " + names
-  def quit( self, nick, msg ):
-    print "quit:" + nick + " --> " + msg
-  def kick( self, usr, chan, nick, msg ):
-    print "kick: " + usr + " --> " + chan + " --> " + nick + " --> " + msg
-  def error( self, nick, msg ):
-    print "error: " + nick + " --> " + msg
-    
-
-def _MyHandlerFactory(data):
-  def _f(client):
-    return _MyHandler(client, data)
-  return _f
+from overlay_server import ChatServer
+import dbus
+import dbus.service
 
 class IRCOverlayVideoStream(object):
   """
     Primary module class. Instantiate to create a rendered video stream
   with an overlaid IRC chat.
   """
-  def __init__(self, URI, host, port, channel, nick ):
+  def __init__(self, URI):
     """ Initialize and start rendered gstreamer video stream with IRC overlay.
 
     :param URI: URI address of video stream to render.
-    :type URI: str.
-    :param host: IRC host to connect to.
-    :type host: str.
-    :param port: port on IRC host to connect to
-    :type port: int.
-    :param channel: IRC channel on host to join on connection
-    :type channel: str.
-    :param nick: nick to use when connecting to IRC host
-    :type nick: str.    
+    :type URI: str.   
     """
-    self.URI = URI
-    self.host = host
-    self.port = port
-    self.channel = channel
-    self.nick = nick
-
     self.msgbuffer = IRCMessageBuffer()
     #self.render = Simple()
     #self.render = Ticker()
@@ -137,13 +82,8 @@ class IRCOverlayVideoStream(object):
     self.pipeline.set_state(gst.STATE_PAUSED)
     self.pipeline.set_state(gst.STATE_PLAYING)
 
-    self.cli = IRCClient(_MyHandlerFactory(self), host=self.host, port=self.port, nick=self.nick, connect_cb=self._connect_cb)
-    self.conn = self.cli.connect()
-
-    gobject.idle_add(self.conn.next)
-
-  def _connect_cb(self,cli):
-    helpers.join(self.cli, self.channel)
+  #def _connect_cb(self,cli):
+  #  helpers.join(self.cli, self.channel)
 
   def push(self, msg):
     """ Push an IRCMessage into the current IRC queue.
@@ -169,6 +109,10 @@ class IRCOverlayVideoStream(object):
 
     return True
 
+  def OnMessage(self, message):
+    print '***client msg*** ' + message
+    self.push(IRCMessage('UNKNOWN', 'vhost', message))
+
   def _on_message(self, bus, message):
     t = message.type
     if t == gst.MESSAGE_EOS:
@@ -183,29 +127,27 @@ class IRCOverlayVideoStream(object):
 
 
 def main():
-  usage = 'usage: %prog --host <irc hostname> --port <irc port> --nick <irc nickname> --channel <irc channel> --stream <media stream to overlay>'
+  usage = 'usage: --host <irc hostname> --port <irc port> --nick <irc nickname> --channel <irc channel> --stream <media stream to overlay>'
   parser = OptionParser(usage)
   parser.add_option("-s", "--stream", dest="STREAM_URL",
                       help="stream URL to open")
-  parser.add_option("-H", "--host", dest="HOST",
-                      help="IRC host address")
-  parser.add_option("-p", "--port", type="int",dest="PORT",
-                      help="IRC port")
-  parser.add_option("-n", "--nick", dest="NICK",
-                      help="IRC nickname")
-  parser.add_option("-c", "--channel", dest="CHANNEL",
-                      help="IRC nickname")
   parser.add_option("-v", "--verbose",
                       action="store_true", dest="verbose")
   parser.add_option("-q", "--quiet",
                       action="store_false", dest="verbose")
   (options, args) = parser.parse_args()
-  if not options.HOST or not options.PORT or not options.NICK or not options.CHANNEL or not options.STREAM_URL:
+  if not options.STREAM_URL:
     parser.error(usage)
   if options.verbose:
     logging.basicConfig(level=logging.DEBUG)
 
-  stream = IRCOverlayVideoStream( options.STREAM_URL, options.HOST, options.PORT, options.CHANNEL, options.NICK )
+  stream = IRCOverlayVideoStream(options.STREAM_URL)
+
+  dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+  session_bus = dbus.SessionBus()
+  name = dbus.service.BusName("com.VideoOverlay.ChatInterface", session_bus)
+  object = ChatServer(session_bus, '/ChatServer', client=stream)
 
   gtk.main()
   
