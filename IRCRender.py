@@ -14,117 +14,131 @@
 from IRCMessageBuffer import IRCMessage
 from IRCMessageBuffer import IRCMessageBuffer
 from math import pi
+from color import Color
 
 class DropShadow(object):
-  def __init__(self, is_visible=True, x_offset=2, y_offset=2, r=0.0, g=0.0, b=0.0, a=1.0):
+  '''
+  Drop shadow of certain color beneath text at offset pixels x,y
+  '''
+  def __init__(self, is_visible=True, x_offset=2, y_offset=2, color=Color.Black):
     self.IsVisible = is_visible
     self.XOffset = x_offset
     self.YOffset = y_offset
-    self.R = r
-    self.G = g
-    self.B = b
-    self.A = a
+    self.Color = color
+
+class Shading(object):
+  '''
+  Shaded area beneath text of some dimentions
+  Meant to make text easier to read
+  '''
+  def __init__(self, x=0, y=0, w=0, h=0, color=Color(r=0.0, g=0.0, b=0.0, a=0.5), is_visible=True):
+    self.X = x
+    self.Y = y
+    self.W = w
+    self.H = h
+    self.Color = color
+    self.IsVisible=is_visible
+
+  def Draw(self, ctx, width, height, timestamp, deltaT):
+    ctx.set_source_rgba(self.Color.R, self.Color.G, self.Color.B, self.Color.A)
+    ctx.rectangle ( self.X, self.Y, self.W, self.H)
+    ctx.fill()
 
 class Simple(object):
-  def __init__(self, x=0, y=0, w=100, h=100, num_entries=10, font_size=24, vertical_spacing=12,drop_shadow=DropShadow()):
+  '''
+  Simple non animated mesage queue displayed on screen.
+  Newest messages appear on top.
+  Does not currently properly wrap messages to bounding box.
+  '''
+  def __init__(self, x=0, y=0, w=100, h=100, num_entries=10, font_size=24, vertical_spacing=12, color=Color.White, is_visible=True, drop_shadow=DropShadow()):
     self.lastTimestamp = 0
     self.X = x
     self.Y = y
     self.W = w
     self.H = h
     self.buffer = IRCMessageBuffer(bufferlength = num_entries)
-    self.R = 1.0
-    self.G = 1.0
-    self.B = 1.0
-    self.A = 1.0
+    self.Color = color
     self.FontSize = font_size
     self.VerticalSpacing = vertical_spacing
     self.DropShadow = drop_shadow
+    self.IsVisible = is_visible
   
   def push(self, msg ):
     self.buffer.push(msg)
   
-  def on_draw(self,ctx,width,height,timestamp,deltaT):
+  def on_draw(self, ctx, width, height, timestamp, deltaT):
+    if not self.IsVisible:
+      return
     ul_x = self.X
     ul_y = self.Y
     for entry in self.buffer:
       nick = entry.nick
       msg = entry.nick + ":" + entry.msg
-      ctx.set_source_rgba (self.R, self.G, self.B, self.A)
       ctx.set_font_size(self.FontSize)
       extents = ctx.text_extents(msg)
       if self.DropShadow.IsVisible:
         ctx.move_to(ul_x+self.DropShadow.XOffset,ul_y+self.DropShadow.YOffset)
-        ctx.set_source_rgb(self.DropShadow.R, self.DropShadow.G, self.DropShadow.B)
+        ctx.set_source_rgb(self.DropShadow.Color.R, self.DropShadow.Color.G, self.DropShadow.Color.B)
         ctx.show_text(msg)
       ctx.move_to(ul_x,ul_y)
-      ctx.set_source_rgb(self.R, self.G, self.B)
+      ctx.set_source_rgb(self.Color.R, self.Color.G, self.Color.B)
       ctx.show_text(msg)
       ul_y = ul_y + extents[3] + self.VerticalSpacing
+
 
 class TickerIRCMsg(IRCMessage):
   def __init__(self, message):
     IRCMessage.__init__(self,message.nick,message.vhost,message.msg )
-    self.x = 0
-    self.y = 0
-    self.w = 0
+    self.DistanceMoved = 0
 
 class Ticker(object):
-  def __init__(self):
+  def __init__(self, y=300, scroll_left=True, font_height=24, color=Color.White, is_visible=True, movement=100, drop_shadow=DropShadow()):
     self.buffer = IRCMessageBuffer( bufferlength = 10 )
-    self.current_w = 0
-    self.current_h = 0
+    self.Y = y
+    self.ScrollLeft = scroll_left
+    self.FontHeight = font_height
+    self.Color = color
+    self.Movement = movement
+    self.DropShadow = drop_shadow
+    self.IsVisible = is_visible
+    self.Shading = Shading()
 
-  def push(self, msg ):
-    newmsg = TickerIRCMsg( msg )
-    newmsg.x = self.current_w
-    newmsg.y = 7 * self.current_h / 8
-    bufferlength = len( self.buffer )
-    if( bufferlength > 0 ):
-      lastEntry = self.buffer[bufferlength - 1]
-      if( lastEntry.x + lastEntry.w + 20 > self.current_w ):
-        newmsg.x = lastEntry.x + lastEntry.w + 20
-    #as the default behavior for the IRCMessagebuffer is to push to its front,
-    #we'll append this new message to the back (i.e. newest messages queued at the end )
-    self.buffer.append( newmsg )
-  def on_draw(self,ctx,width,height,timestamp,deltaT):
-    self.current_w = width
-    self.current_h = height
-    #we want a font size that is readable for the current window height
-    font_height_device = height / 15
-    (font_width_user,font_height_user) = ctx.device_to_user_distance(1,font_height_device)
-    #move the ul_x corner to the left a little according to deltaT
+  def push(self, msg):
+    newmsg = TickerIRCMsg(msg)
+    bufferlength = len(self.buffer)
+    self.buffer.append(newmsg)
+  def on_draw(self, ctx, width, height, timestamp, deltaT):
+    if not self.IsVisible:
+      return
+    if len(self.buffer)<1:
+      return
+    #calculate current font dimensions
+    entry = self.buffer[0]
+    msg = '*** <'+entry.nick+'> : '+entry.msg+' ***'
+    ctx.set_font_size(self.FontHeight)
+    xbearing, ybearing, msg_width, msg_height, xadvance, yadvance = ctx.text_extents(msg)
+
     #distance = speed * time = pixels/second * dt
-    #here, I want a given character to traverse the screen in 4 seconds.
-    delta_x = ( width / 6.0 ) * deltaT 
+    delta_x = self.Movement*deltaT 
 
-    #draw a shaded background for messages to traverse (f there are any messages )
-    if( len( self.buffer ) > 0 ):
-      ctx.set_source_rgba (0, 0, 0, 0.5)
-      y = 7 * height / 8
-      ctx.rectangle ( 0, y - 1.5 * font_height_device, width, 2 * font_height_device )
-      ctx.fill()
+    #draw a shaded background for messages to traverse (if there are any messages )
+    if self.Shading.IsVisible:
+      self.Shading.X=0
+      self.Shading.Y=self.Y+ybearing
+      self.Shading.W=width
+      self.Shading.H=msg_height
+      self.Shading.Draw(ctx, width, height, timestamp, deltaT)
 
-    for (ientry,entry) in enumerate( self.buffer ):
-      entry.x = entry.x - delta_x
-      nick = entry.nick
-      msg = entry.nick + ":" + entry.msg
-      ctx.select_font_face("Arial")
-      ctx.set_source_rgba (1.0, 1.0, 1.0, 1.0)
-      ctx.set_font_size(font_height_user)
-      extents = ctx.text_extents(msg)
-      entry.w = extents[2]
-      #ctx.move_to( entry.x + 2, entry.y + 2 )
-      #ctx.set_source_rgb(0,0,0)
-      #ctx.show_text(msg)
-      ctx.move_to( entry.x , entry.y )
-      ctx.set_source_rgb(1,1,0)
-      ctx.show_text(msg)
-
-    if( len(self.buffer) > 0 ):
-      entry = self.buffer[0]
-      if( entry.x + entry.w < 0 ):
-        self.buffer.pop(0)
-
-
-
+    entry.DistanceMoved+=delta_x
+    
+    ctx.select_font_face("Arial")
+    ctx.set_source_rgba (self.Color.R, self.Color.G, self.Color.B)
+ 
+    current_x = width-entry.DistanceMoved
+    if not self.ScrollLeft:
+      current_x = width+entry.DistanceMoved-msg_width
+    ctx.move_to(current_x, self.Y)
+    ctx.show_text(msg)
+    if entry.DistanceMoved>msg_width+width:
+      self.buffer.pop(0)
+      
