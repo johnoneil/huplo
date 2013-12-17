@@ -38,9 +38,9 @@ class CustomCairoOverlay(gst.Element):
                      gst.PAD_ALWAYS,
                      gst.caps_from_string ("video/x-raw-rgb,bpp=32,depth=32,blue_mask=-16777216,green_mask=16711680, red_mask=65280, alpha_mask=255,width=[ 1, 2147483647 ],height=[ 1, 2147483647 ],framerate=[ 0/1, 2147483647/1 ]"))
 
-  def __init__(self, customDrawHandler = None ):
+  def __init__(self, customDrawHandlers ):
     gst.Element.__init__(self)
-    self.customDrawHandler = customDrawHandler
+    self.customDrawHandlers = customDrawHandlers
     self.lastTimestamp = 0
 
     self.sinkpad = gst.Pad(self._sinkpadtemplate, "sink")
@@ -90,8 +90,8 @@ class CustomCairoOverlay(gst.Element):
       return
 
     try:
-      if(self.customDrawHandler is not None):
-        self.customDrawHandler(ctx,width,height,buf.timestamp*1e-9,deltaT*1e-9)
+      for drawHandler in self.customDrawHandlers:
+        drawHandler.on_draw(ctx,width,height,buf.timestamp*1e-9,deltaT*1e-9)
     except:
       print "Failed cairo render"
       traceback.print_exc()

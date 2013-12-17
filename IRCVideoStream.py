@@ -51,9 +51,10 @@ class IRCOverlayVideoStream(object):
     :type URI: str.   
     """
     self.msgbuffer = IRCMessageBuffer()
-    #self.render = Simple()
-    self.render = Ticker()
-    #self.render = GamerStyle()
+    self.DrawHandlers = []
+    self.DrawHandlers.append(Simple(x=100, y=100))
+    self.DrawHandlers.append(Ticker(y=400))
+    self.DrawHandlers.append(GamerStyle())
 
     self.pipeline = gst.Pipeline("mypipeline")
 
@@ -64,7 +65,7 @@ class IRCOverlayVideoStream(object):
     self.playsink = gst.element_factory_make("playsink", "playsink")
     self.pipeline.add(self.playsink)
 
-    self.text = CustomCairoOverlay(self.render.on_draw)
+    self.text = CustomCairoOverlay(self.DrawHandlers)
     self.pipeline.add(self.text)
 
     self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
@@ -82,9 +83,6 @@ class IRCOverlayVideoStream(object):
     self.pipeline.set_state(gst.STATE_PAUSED)
     self.pipeline.set_state(gst.STATE_PLAYING)
 
-  #def _connect_cb(self,cli):
-  #  helpers.join(self.cli, self.channel)
-
   def push(self, msg):
     """ Push an IRCMessage into the current IRC queue.
 
@@ -92,7 +90,8 @@ class IRCOverlayVideoStream(object):
       queue
     :type msg: IRCMessage.
     """
-    self.render.push(msg)
+    for handler in self.DrawHandlers:
+      handler.push(msg)
 
   def _demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
@@ -110,7 +109,7 @@ class IRCOverlayVideoStream(object):
     return True
 
   def OnMessage(self, message):
-    print '***client msg*** ' + message
+    #print '***client msg*** ' + message
     self.push(IRCMessage('UNKNOWN', 'vhost', message))
 
   def _on_message(self, bus, message):
