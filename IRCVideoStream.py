@@ -51,9 +51,9 @@ class IRCOverlayVideoStream(object):
     :type URI: str.   
     """
     self.msgbuffer = IRCMessageBuffer()
-    #self.render = Simple()
+    self.render = Simple()
     #self.render = Ticker()
-    self.render = GamerStyle()
+    #self.render = GamerStyle()
 
     self.pipeline = gst.Pipeline("mypipeline")
 

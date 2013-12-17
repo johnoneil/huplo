@@ -15,28 +15,52 @@ from IRCMessageBuffer import IRCMessage
 from IRCMessageBuffer import IRCMessageBuffer
 from math import pi
 
+class DropShadow(object):
+  def __init__(self, is_visible=True, x_offset=2, y_offset=2, r=0.0, g=0.0, b=0.0, a=1.0):
+    self.IsVisible = is_visible
+    self.XOffset = x_offset
+    self.YOffset = y_offset
+    self.R = r
+    self.G = g
+    self.B = b
+    self.A = a
+
 class Simple(object):
-  def __init__(self):
-    self.buffer = IRCMessageBuffer()
+  def __init__(self, x=0, y=0, w=100, h=100, num_entries=10, font_size=24, vertical_spacing=12,drop_shadow=DropShadow()):
     self.lastTimestamp = 0
+    self.X = x
+    self.Y = y
+    self.W = w
+    self.H = h
+    self.buffer = IRCMessageBuffer(bufferlength = num_entries)
+    self.R = 1.0
+    self.G = 1.0
+    self.B = 1.0
+    self.A = 1.0
+    self.FontSize = font_size
+    self.VerticalSpacing = vertical_spacing
+    self.DropShadow = drop_shadow
+  
   def push(self, msg ):
     self.buffer.push(msg)
+  
   def on_draw(self,ctx,width,height,timestamp,deltaT):
-    ul_x = width/16
-    ul_y = 2*height/3
+    ul_x = self.X
+    ul_y = self.Y
     for entry in self.buffer:
       nick = entry.nick
       msg = entry.nick + ":" + entry.msg
-      ctx.set_source_rgba (1.0, 1.0, 1.0, 1.0)
-      ctx.set_font_size(24)
+      ctx.set_source_rgba (self.R, self.G, self.B, self.A)
+      ctx.set_font_size(self.FontSize)
       extents = ctx.text_extents(msg)
-      ctx.move_to( ul_x+2,ul_y+2 )
-      ctx.set_source_rgb(0,0,0)
+      if self.DropShadow.IsVisible:
+        ctx.move_to(ul_x+self.DropShadow.XOffset,ul_y+self.DropShadow.YOffset)
+        ctx.set_source_rgb(self.DropShadow.R, self.DropShadow.G, self.DropShadow.B)
+        ctx.show_text(msg)
+      ctx.move_to(ul_x,ul_y)
+      ctx.set_source_rgb(self.R, self.G, self.B)
       ctx.show_text(msg)
-      ctx.move_to( ul_x,ul_y )
-      ctx.set_source_rgb(1,1,0)
-      ctx.show_text(msg)
-      ul_y = ul_y + 1.25 * extents[3]
+      ul_y = ul_y + extents[3] + self.VerticalSpacing
 
 class TickerIRCMsg(IRCMessage):
   def __init__(self, message):
