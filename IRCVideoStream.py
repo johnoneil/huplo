@@ -23,7 +23,8 @@ from CustomCairoOverlay import CustomCairoOverlay
 from IRCMessageBuffer import IRCMessageBuffer
 from IRCMessageBuffer import IRCMessage
 from IRCRender import Simple
-from IRCRender import Ticker
+#from IRCRender import Ticker
+from ticker import TickerManager
 from GamerStyle import GamerStyle
 
 import logging
@@ -52,9 +53,10 @@ class IRCOverlayVideoStream(object):
     """
     self.msgbuffer = IRCMessageBuffer()
     self.DrawHandlers = []
-    self.DrawHandlers.append(Simple(x=100, y=100))
-    self.DrawHandlers.append(Ticker(y=400))
-    self.DrawHandlers.append(GamerStyle())
+    #self.DrawHandlers.append(Simple(x=100, y=100))
+    #self.DrawHandlers.append(Ticker(y=400))
+    self.DrawHandlers.append(TickerManager())
+    #self.DrawHandlers.append(GamerStyle())
 
     self.pipeline = gst.Pipeline("mypipeline")
 
@@ -90,8 +92,9 @@ class IRCOverlayVideoStream(object):
       queue
     :type msg: IRCMessage.
     """
-    for handler in self.DrawHandlers:
-      handler.push(msg)
+    #for handler in self.DrawHandlers:
+    #  handler.push(msg)
+    pass
 
   def _demuxer_callback(self, uribin, pad):
     caps = pad.get_caps()
@@ -140,9 +143,9 @@ def main():
   if options.verbose:
     logging.basicConfig(level=logging.DEBUG)
 
-  stream = IRCOverlayVideoStream(options.STREAM_URL)
-
   dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+  stream = IRCOverlayVideoStream(options.STREAM_URL)
 
   session_bus = dbus.SessionBus()
   name = dbus.service.BusName("com.VideoOverlay.ChatInterface", session_bus)
