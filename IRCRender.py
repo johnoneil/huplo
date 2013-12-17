@@ -15,7 +15,7 @@ from IRCMessageBuffer import IRCMessage
 from IRCMessageBuffer import IRCMessageBuffer
 from math import pi
 
-class Simple:
+class Simple(object):
   def __init__(self):
     self.buffer = IRCMessageBuffer()
     self.lastTimestamp = 0
@@ -38,14 +38,14 @@ class Simple:
       ctx.show_text(msg)
       ul_y = ul_y + 1.25 * extents[3]
 
-class TickerIRCMsg( IRCMessage ):
-  def __init__( self, message ):
+class TickerIRCMsg(IRCMessage):
+  def __init__(self, message):
     IRCMessage.__init__(self,message.nick,message.vhost,message.msg )
     self.x = 0
     self.y = 0
     self.w = 0
 
-class Ticker:
+class Ticker(object):
   def __init__(self):
     self.buffer = IRCMessageBuffer( bufferlength = 10 )
     self.current_w = 0

@@ -17,7 +17,7 @@ import cairo
 import pango
 import pangocairo
 
-class GamerStyle:
+class GamerStyle(object):
   def __init__(self):
     self._buffer = []
     self._messages = AnimatedMessageQueue(x = 10, y = 10)
