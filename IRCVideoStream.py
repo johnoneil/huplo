@@ -28,11 +28,12 @@ from ticker import TickerManager
 from GamerStyle import GamerStyle
 
 import logging
-from oyoyo.client import IRCClient
-from oyoyo.cmdhandler import DefaultCommandHandler
-from oyoyo import helpers
-from oyoyo import parse
-from optparse import OptionParser
+import argparse
+#from oyoyo.client import IRCClient
+#from oyoyo.cmdhandler import DefaultCommandHandler
+#from oyoyo import helpers
+#from oyoyo import parse
+#from optparse import OptionParser
 
 from math import pi
 
@@ -130,22 +131,22 @@ class IRCOverlayVideoStream(object):
 
 def main():
   usage = 'usage: --host <irc hostname> --port <irc port> --nick <irc nickname> --channel <irc channel> --stream <media stream to overlay>'
-  parser = OptionParser(usage)
-  parser.add_option("-s", "--stream", dest="STREAM_URL",
+  parser = argparse.ArgumentParser(description=usage)
+  parser.add_argument("-s", "--stream", dest="STREAM_URL",
                       help="stream URL to open")
-  parser.add_option("-v", "--verbose",
+  parser.add_argument("-v", "--verbose",
                       action="store_true", dest="verbose")
-  parser.add_option("-q", "--quiet",
+  parser.add_argument("-q", "--quiet",
                       action="store_false", dest="verbose")
-  (options, args) = parser.parse_args()
-  if not options.STREAM_URL:
+  args = parser.parse_args()
+  if not args.STREAM_URL:
     parser.error(usage)
-  if options.verbose:
+  if args.verbose:
     logging.basicConfig(level=logging.DEBUG)
 
   dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
-  stream = IRCOverlayVideoStream(options.STREAM_URL)
+  stream = IRCOverlayVideoStream(args.STREAM_URL)
 
   session_bus = dbus.SessionBus()
   name = dbus.service.BusName("com.VideoOverlay.ChatInterface", session_bus)
