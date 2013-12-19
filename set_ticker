@@ -1,0 +1,63 @@
+#!/usr/bin/python
+# vim: set ts=2 expandtab:
+"""
+Module: set_ticker.py
+Desc: Ticker style text display crawls across screen
+Author: John O'Neil
+Email: oneil.john@gmail.com
+DATE: Monday, Dec 16th 2013
+  
+""" 
+from color import Color
+import dbus
+import argparse
+from traceback import print_exc
+import sys
+import jsonpickle
+from ticker import Ticker
+
+def main():
+  parser = argparse.ArgumentParser(description='Ticker client interface.')
+  parser.add_argument('-a', '--add', help='Friendly name of new ticker to add.')
+  parser.add_argument('-m', '--message', help='Message in ticker to add or update', default='')
+  parser.add_argument('-r', '--remove', help='Remove ticker with specified name')
+  parser.add_argument('-c', '--clear', help='Clear all current tickers on screen', action='store_true')
+  parser.add_argument('-y', '--y_pos', help='y position of ticker on screen', default=300,type=int)
+  parser.add_argument('-f', '--fontsize', help='Text font size.', default=24.0, type=float)
+  parser.add_argument('-s', '--speed', help='Speed of text movement across screen in pixels per second', default=100)
+  parser.add_argument('-v', '--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('--right', help='Scroll ticker to the left', action='store_true')
+  args = parser.parse_args()
+  
+  #get ahold of the debus published object and call its methods
+  try:
+    bus = dbus.SessionBus()
+    remote_object = bus.get_object("com.VideoOverlay.Ticker",
+                                   "/TickerServer")
+
+    ticker_iface = dbus.Interface(remote_object, "com.VideoOverlay.Ticker")
+
+    msg = ''
+    if args.message:
+      msg = args.message
+
+    if args.clear:
+      ticker_iface.Clear()
+      return
+
+    if args.remove:
+      ticker_iface.RemoveTicker(args.remove)
+
+    if args.add:
+      ticker = Ticker(msg, y=args.y_pos, scroll_left=not args.right, font_height=args.fontsize, movement=args.speed)
+      pickled = jsonpickle.encode(ticker)
+      ticker_iface.AddTicker(args.add, unicode(pickled))
+
+
+  except dbus.DBusException:
+    print_exc()
+    sys.exit(1)
+
+if __name__ == '__main__':
+  main()   
+      

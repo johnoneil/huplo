@@ -23,17 +23,11 @@ from CustomCairoOverlay import CustomCairoOverlay
 from IRCMessageBuffer import IRCMessageBuffer
 from IRCMessageBuffer import IRCMessage
 from IRCRender import Simple
-#from IRCRender import Ticker
 from ticker import TickerManager
 from GamerStyle import GamerStyle
 
 import logging
 import argparse
-#from oyoyo.client import IRCClient
-#from oyoyo.cmdhandler import DefaultCommandHandler
-#from oyoyo import helpers
-#from oyoyo import parse
-#from optparse import OptionParser
 
 from math import pi
 
