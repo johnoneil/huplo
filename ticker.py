@@ -56,17 +56,14 @@ class TickerMsg(object):
 
 
 class Ticker(object):
-  def __init__(self, message, y=300, scroll_left=True, font_height=24, color=Color.White,
-    is_visible=True, movement=100, drop_shadow=DropShadow()):
+  def __init__(self, message, y=300, scroll_left=True, is_visible=True, movement=100, show_shading=False, drop_shadow=DropShadow()):
     self.Message = TickerMsg(message)
     self.Y = y
     self.ScrollLeft = scroll_left
-    self.FontHeight = font_height
-    self.Color = color
     self.Movement = movement
     self.DropShadow = drop_shadow
     self.IsVisible = is_visible
-    self.Shading = Shading()
+    self.Shading = Shading(is_visible=show_shading)
 
   def on_draw(self, ctx, width, height, timestamp, deltaT):
     if not self.IsVisible:

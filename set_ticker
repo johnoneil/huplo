@@ -23,9 +23,9 @@ def main():
   parser.add_argument('-r', '--remove', help='Remove ticker with specified name')
   parser.add_argument('-c', '--clear', help='Clear all current tickers on screen', action='store_true')
   parser.add_argument('-y', '--y_pos', help='y position of ticker on screen', default=300,type=int)
-  parser.add_argument('-f', '--fontsize', help='Text font size.', default=24.0, type=float)
   parser.add_argument('-s', '--speed', help='Speed of text movement across screen in pixels per second', default=100)
   parser.add_argument('-v', '--verbose', help='Verbose operation. Print status messages during processing', action="store_true")
+  parser.add_argument('--shading', help='Show shaded background behind ticker', action="store_true")
   parser.add_argument('--right', help='Scroll ticker to the left', action='store_true')
   args = parser.parse_args()
   
@@ -49,7 +49,7 @@ def main():
       ticker_iface.RemoveTicker(args.remove)
 
     if args.add:
-      ticker = Ticker(msg, y=args.y_pos, scroll_left=not args.right, font_height=args.fontsize, movement=args.speed)
+      ticker = Ticker(msg, y=args.y_pos, scroll_left=not args.right, movement=args.speed, show_shading=args.shading)
       pickled = jsonpickle.encode(ticker)
       ticker_iface.AddTicker(args.add, unicode(pickled))
 
