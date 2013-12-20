@@ -25,6 +25,7 @@ from IRCMessageBuffer import IRCMessage
 from IRCRender import Simple
 from ticker import TickerManager
 from GamerStyle import GamerStyle
+from text import TextManager
 
 import logging
 import argparse
@@ -51,6 +52,7 @@ class IRCOverlayVideoStream(object):
     #self.DrawHandlers.append(Simple(x=100, y=100))
     #self.DrawHandlers.append(Ticker(y=400))
     self.DrawHandlers.append(TickerManager())
+    self.DrawHandlers.append(TextManager())
     #self.DrawHandlers.append(GamerStyle())
 
     self.pipeline = gst.Pipeline("mypipeline")
