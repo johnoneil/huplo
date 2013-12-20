@@ -16,6 +16,9 @@ import argparse
 from traceback import print_exc
 import sys
 import jsonpickle
+import cairo
+import pango
+import pangocairo
 
 class DropShadow(object):
   '''
@@ -70,35 +73,45 @@ class Ticker(object):
       return
 
     #calculate current font dimensions
-    msg = '*** '+self.Message.Text+' ***'
-    ctx.set_font_size(self.FontHeight)
-    xbearing, ybearing, msg_width, msg_height, xadvance, yadvance = ctx.text_extents(msg)
-
+    msg = self.Message.Text
     #distance = speed * time = pixels/second * dt
-    delta_x = self.Movement*deltaT 
+    delta_x = self.Movement*deltaT
+
+    current_x = width-self.Message.DistanceMoved
+    if not self.ScrollLeft:
+      current_x = self.Message.DistanceMoved-msg_width
+
+    pangoCtx = pangocairo.CairoContext(ctx)
+    msglayout = pangoCtx.create_layout()
+    msglayout.set_alignment(pango.ALIGN_RIGHT)
+    msglayout.set_wrap(pango.WRAP_WORD_CHAR)
+    msglayout.set_font_description(pango.FontDescription("Arial 24"))
+    msgattrs, msgtext, msgaccel = pango.parse_markup(msg)
+    msglayout.set_attributes(msgattrs)
+    msglayout.set_text(msgtext)
+    pangoCtx.update_layout(msglayout)
+    [ink_rect, logical_rect] = msglayout.get_pixel_extents()
+    msg_width = logical_rect[2]
+    msg_height = logical_rect[3]
+
+    self.Message.DistanceMoved += delta_x
+    if self.Message.DistanceMoved>msg_width+width:
+      self.Message.DistanceMoved=0
 
     #draw a shaded background for messages to traverse (if there are any messages )
     if self.Shading.IsVisible:
       self.Shading.X=0
-      self.Shading.Y=self.Y+ybearing
+      self.Shading.Y=self.Y #+ybearing
       self.Shading.W=width
       self.Shading.H=msg_height
       self.Shading.Draw(ctx, width, height, timestamp, deltaT)
 
-    self.Message.DistanceMoved += delta_x
-    
-    ctx.select_font_face("Arial")
-    ctx.set_source_rgba (self.Color.R, self.Color.G, self.Color.B)
- 
-    current_x = width-self.Message.DistanceMoved
-    if not self.ScrollLeft:
-      current_x = self.Message.DistanceMoved-msg_width
-    ctx.move_to(current_x, self.Y)
-    ctx.show_text(msg)
-
-    if self.Message.DistanceMoved>msg_width+width:
-      self.Message.DistanceMoved=0
-
+    #ctx.move_to( nick_ul_x+1,nick_ul_y+2 )
+    #ctx.set_source_rgb(0,0,0)
+    #pangoCtx.show_layout(nicklayout)
+    ctx.move_to( current_x, self.Y)
+    ctx.set_source_rgb(1,1,1)
+    pangoCtx.show_layout(msglayout)
 
 class TickerManager(object):
   def __init__(self):
