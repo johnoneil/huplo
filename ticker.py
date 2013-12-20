@@ -19,6 +19,8 @@ import jsonpickle
 import cairo
 import pango
 import pangocairo
+import re
+from time import gmtime, strftime
 
 class DropShadow(object):
   '''
@@ -69,8 +71,16 @@ class Ticker(object):
     if not self.IsVisible:
       return
 
-    #calculate current font dimensions
     msg = self.Message.Text
+    #update text string with current time if time markup found
+    #for example "%{%a, %d %b %Y %H:%M:%S}%"
+    def ReplaceMarkupTagWithDate(match):
+      datestring = match.group(1).strip()
+      #print 'datestring ' + datestring
+      return strftime(datestring, gmtime())
+    #regex_with_arg = re.compile(r"\%{(.*?)\}%")
+    msg = re.sub(r"\%{(.*?)\}%", ReplaceMarkupTagWithDate, msg)
+  
     #distance = speed * time = pixels/second * dt
     delta_x = self.Movement*deltaT
 
