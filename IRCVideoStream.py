@@ -26,6 +26,7 @@ from IRCRender import Simple
 from ticker import TickerManager
 from GamerStyle import GamerStyle
 from text import TextManager
+from list import ListManager
 
 import logging
 import argparse
@@ -54,6 +55,7 @@ class IRCOverlayVideoStream(object):
     self.DrawHandlers.append(TickerManager())
     self.DrawHandlers.append(TextManager())
     #self.DrawHandlers.append(GamerStyle())
+    self.DrawHandlers.append(ListManager())
 
     self.pipeline = gst.Pipeline("mypipeline")
 
