@@ -47,7 +47,7 @@ class Shading(object):
     self.IsVisible=is_visible
 
   def Draw(self, ctx, width, height, timestamp, deltaT):
-    ctx.set_source_rgba(self.Color.R, self.Color.G, self.Color.B, self.Color.A)
+    ctx.set_source_rgba(self.Color.r, self.Color.g, self.Color.b, self.Color.a)
     ctx.rectangle ( self.X, self.Y, self.W, self.H)
     ctx.fill()
 
