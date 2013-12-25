@@ -27,6 +27,7 @@ from traceback import print_exc
 import sys
 import jsonpickle
 from chat_display import Chat
+from text import Text
 import string
 import irc
 
@@ -93,7 +94,14 @@ class IRCVideoOverlayClient(twisted_irc.IRCClient):
     channel = params[1]
     topic = params[2]
     topic = irc.formatting_to_pango_markup(topic)
-    #print 'channel ' + channel + ' topic: ' + topic
+    bus = dbus.SessionBus()
+    print  topic
+    remote_object = bus.get_object("com.VideoOverlay.Text",
+                                   "/TextServer")
+    text_iface = dbus.Interface(remote_object, "com.VideoOverlay.Text")
+    text = Text(message=topic, x=10, y=10, show_shading=True)
+    pickled = jsonpickle.encode(text)
+    text_iface.AddText('topic', unicode(pickled))
 
   def alterCollidedNick(self, nickname):
       return nickname+'_'

@@ -6,6 +6,9 @@ Desc: use dbus to put simple text on live video
 Author: John O'Neil
 Email: oneil.john@gmail.com
 DATE: Thursday, December 19th 2013
+
+Example usage:
+./set_text -a time -m '<span color="yellow" font_desc="courier new 16">%{%a, %d %b %Y %H:%M:%S}%</span>' -x 940 -y 10 --shading
   
 """ 
 from color import Color

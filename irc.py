@@ -82,6 +82,9 @@ def formatting_to_pango_markup(msg):
   pango markup.
   '''
   msg = decode(msg)
+  print msg
+  msg = re.sub(r'&','&amp;', msg)
+  print 'escaped amp ' + msg
   class MarkupFunctor(object):
     def __init__(self):
       self.match_found = False
