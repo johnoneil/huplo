@@ -95,7 +95,6 @@ class IRCVideoOverlayClient(twisted_irc.IRCClient):
     topic = params[2]
     topic = irc.formatting_to_pango_markup(topic)
     bus = dbus.SessionBus()
-    print  topic
     remote_object = bus.get_object("com.VideoOverlay.Text",
                                    "/TextServer")
     text_iface = dbus.Interface(remote_object, "com.VideoOverlay.Text")
