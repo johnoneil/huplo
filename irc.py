@@ -25,6 +25,28 @@ def split_speaker(user):
   vhost = vhost.replace('~', '', 1)
   return nick, vhost
 
+#after http://stackoverflow.com/questions/938870/python-irc-bot-and-encoding-issue
+def decode(bytes):
+  try:
+    text = bytes.decode('utf-8')
+  except UnicodeDecodeError:
+    try:
+      text = bytes.decode('iso-8859-1')
+    except UnicodeDecodeError:
+      text = bytes.decode('cp1252')
+  return text
+
+
+def encode(bytes):
+  try:
+    text = bytes.encode('utf-8')
+  except UnicodeEncodeError:
+    try:
+      text = bytes.encode('iso-8859-1')
+    except UnicodeEncodeError:
+      text = bytes.encode('cp1252')
+  return text
+
 color_dict = {
   0 : 'white',
   1 : 'black',
@@ -59,6 +81,7 @@ def formatting_to_pango_markup(msg):
   and replace typical binary irc color code formatting with
   pango markup.
   '''
+  msg = decode(msg)
   class MarkupFunctor(object):
     def __init__(self):
       self.match_found = False
@@ -95,7 +118,6 @@ def formatting_to_pango_markup(msg):
         self.italic = not self.italic
 
       if match.groupdict()['color'] is not None:
-        print str(match.groupdict())
         if match.groupdict()['fg'] is not None:
           self.fg_color = int(match.groupdict()['fg'])
         if match.groupdict()['bg'] is not None:
@@ -140,3 +162,13 @@ def formatting_to_pango_markup(msg):
   if markup_transform.match_found:
     msg += '</span>'
   return msg
+
+def to_hex(msg):
+  '''
+  Helper to Dump hex of message to screen
+  '''
+  line = decode(msg)
+  print ':'.join(x.encode('hex') for x in line)
+  print '----------------------------------'
+  print ':'.join(unicode(x) for x in line)
+
