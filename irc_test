@@ -8,13 +8,13 @@ Email: oneil.john@gmail.com
 DATE: Saturday, December 21st 2013
   
 """ 
-from color import Color
+from huplo.color import Color
 import dbus
 import argparse
 from traceback import print_exc
 import sys
 import jsonpickle
-from chat_display import Chat
+from huplo.chat_display import Chat
 
 def main():
   parser = argparse.ArgumentParser(description='Add simulated chat to an live video display.')

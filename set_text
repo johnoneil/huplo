@@ -11,13 +11,13 @@ Example usage:
 ./set_text -a time -m '<span color="yellow" font_desc="courier new 16">%{%a, %d %b %Y %H:%M:%S}%</span>' -x 940 -y 10 --shading
   
 """ 
-from color import Color
+from huplo.color import Color
 import dbus
 import argparse
 from traceback import print_exc
 import sys
 import jsonpickle
-from text import Text
+from huplo.text import Text
 
 def main():
   parser = argparse.ArgumentParser(description='Add text to a live video.')

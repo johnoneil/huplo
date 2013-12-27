@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # vim: set ts=2 expandtab:
 """
-Module: IRCVideoStream
-Desc: A simple gstreamer based way to monitor an IRC chat atop a video stream
+Module: gstreamer.py
+Desc: Gstreamer plugin for huplo heads up presentation layer
 Author: John O'Neil
 Email:
 
@@ -30,7 +30,7 @@ WIDTH, HEIGHT = 640, 480
 FRAMES = 300
 FRAMERATE = 15
 
-class HeadsUpPresentatonOverlay(gst.Element):
+class HeadsUpPresentatonLayer(gst.Element):
   _sinkpadtemplate = gst.PadTemplate ("sink",
                      gst.PAD_SINK,
                      gst.PAD_ALWAYS,
@@ -101,14 +101,14 @@ class HeadsUpPresentatonOverlay(gst.Element):
       print "Failed cairo render"
       traceback.print_exc()
 
-gobject.type_register(  CustomCairoOverlay)
+gobject.type_register(HeadsUpPresentatonLayer)
 
 if __name__ == "__main__":
   gobject.threads_init()
   pipe = gst.Pipeline()
   vt = gst.element_factory_make ("videotestsrc")
   cf = gst.element_factory_make ("capsfilter")
-  c1 =   CustomCairoOverlay()
+  c1 =   HeadsUpPresentatonLayer()
   color = gst.element_factory_make ("ffmpegcolorspace")
   scale = gst.element_factory_make ("videoscale")
   q1 = gst.element_factory_make ("queue")

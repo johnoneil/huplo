@@ -1,4 +1,2 @@
-__all__ = ['huplo']
+__all__ = ['gstreamer','animation', 'chat_display', 'color', 'irc', 'list', 'pause', 'position', 'pyTweener', 'text', 'ticker', 'text', 'animated_scrolling_queue']
 
-	# deprecated to keep older scripts who import this from breaking
-	import huplo

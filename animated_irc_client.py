@@ -20,17 +20,17 @@ from twisted.internet import protocol
 from twisted.internet import ssl
 from twisted.python import log
 from twisted.words.protocols import irc as twisted_irc
-from color import Color
+from huplo.color import Color
 import dbus
 import argparse
 from traceback import print_exc
 import sys
 import jsonpickle
-from chat_display import Chat
-from animated_scrolling_queue import Queue as AnimatedQueue
-from text import Text
+from huplo.chat_display import Chat
+from huplo.animated_scrolling_queue import Queue as AnimatedQueue
+from huplo.text import Text
 import string
-import irc
+import huplo.irc as irc
 
 DEFAULT_PORT = 6660
 

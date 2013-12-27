@@ -19,23 +19,18 @@ import pygst
 pygst.require('0.10')
 import gst
 
-from CustomCairoOverlay import CustomCairoOverlay
-from IRCMessageBuffer import IRCMessageBuffer
-from IRCMessageBuffer import IRCMessage
-#from IRCRender import Simple
-from ticker import TickerManager
-from GamerStyle import GamerStyle
-from text import TextManager
-from list import ListManager
-from chat_display import ChatManager
-from animated_scrolling_queue import QueueManager as AnimatedQueueManager
+from huplo.gstreamer import HeadsUpPresentatonLayer
+from huplo.ticker import TickerManager
+from huplo.text import TextManager
+from huplo.list import ListManager
+from huplo.chat_display import ChatManager
+from huplo.animated_scrolling_queue import QueueManager as AnimatedQueueManager
 
 import logging
 import argparse
 
 from math import pi
 
-from overlay_server import ChatServer
 import dbus
 import dbus.service
 
@@ -50,17 +45,6 @@ class IRCOverlayVideoStream(object):
     :param URI: URI address of video stream to render.
     :type URI: str.   
     """
-    #self.msgbuffer = IRCMessageBuffer()
-    self.DrawHandlers = []
-    #self.DrawHandlers.append(Simple(x=100, y=100))
-    #self.DrawHandlers.append(Ticker(y=400))
-    self.DrawHandlers.append(TickerManager())
-    self.DrawHandlers.append(TextManager())
-    #self.DrawHandlers.append(GamerStyle())
-    self.DrawHandlers.append(ListManager())
-    self.DrawHandlers.append(ChatManager())
-    self.DrawHandlers.append(AnimatedQueueManager())
-
     self.pipeline = gst.Pipeline("mypipeline")
 
     self.uribin = gst.element_factory_make("uridecodebin","uribin")
@@ -70,7 +54,12 @@ class IRCOverlayVideoStream(object):
     self.playsink = gst.element_factory_make("playsink", "playsink")
     self.pipeline.add(self.playsink)
 
-    self.text = CustomCairoOverlay(self.DrawHandlers)
+    self.text = HeadsUpPresentatonLayer()
+    self.text.add_overlay(TickerManager())
+    self.text.add_overlay(TextManager())
+    self.text.add_overlay(ListManager())
+    self.text.add_overlay(ChatManager())
+    self.text.add_overlay(AnimatedQueueManager())
     self.pipeline.add(self.text)
 
     self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
@@ -149,11 +138,7 @@ def main():
   dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
   stream = IRCOverlayVideoStream(args.STREAM_URL)
-  '''
-  session_bus = dbus.SessionBus()
-  name = dbus.service.BusName("com.VideoOverlay.ChatInterface", session_bus)
-  object = ChatServer(session_bus, '/ChatServer', client=stream)
-  '''
+
   gtk.main()
   
 

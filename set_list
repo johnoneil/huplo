@@ -8,13 +8,13 @@ Email: oneil.john@gmail.com
 DATE: Friday, December 20th 2013
   
 """ 
-from color import Color
+from huplo.color import Color
 import dbus
 import argparse
 from traceback import print_exc
 import sys
 import jsonpickle
-from list import List
+from huplo.list import List
 
 def main():
   parser = argparse.ArgumentParser(description='Add text lists to a live video.')
