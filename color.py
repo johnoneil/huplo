@@ -20,19 +20,13 @@ class Color(object):
     self.b = b
     self.a = a
 
-  def fade_out(self, t, tween_type=None):
-    if not tween_type:
-      tween_type = self._tweener.LINEAR
+  def fade_out(self, t, tween_type=Tweener.LINEAR):
     self._tweener.addTween(self, set_a=0.0, tweenTime = t, tweenType=tween_type)
 
-  def fade_in(self, t, tween_type=None):
-    if not tween_type:
-      tween_type = self._tweener.LINEAR
+  def fade_in(self, t, tween_type=Tweener.LINEAR):
     self._tweener.addTween(self, set_a=1.0, tweenTime = t, tweenType=tween_type)
 
-  def to(self, rv, gv, bv, av, t, tween_type=None):
-    if not tween_type:
-      tween_type = self._tweener.LINEAR
+  def to(self, rv, gv, bv, av, t, tween_type=Tweener.LINEAR):
     self._tweener.addTween(self, set_r=rv, set_g=gv, set_b=bv, set_a=av, tweenTime = t, tweenType=tween_type)
 
   def update(self,dt):

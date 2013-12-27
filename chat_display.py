@@ -148,7 +148,7 @@ class Chat(object):
         ctx.rectangle ( msg_x, ul_y, self.W, entry_height)
         ctx.fill()
       ctx.move_to(msg_x, ul_y)
-      ctx.set_source_rgb(1,1,1)
+      ctx.set_source_rgb(1,1,0)
       pangoCtx.show_layout(msglayout)
     
       ul_y += entry_height

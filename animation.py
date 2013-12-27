@@ -1,4 +1,13 @@
 # vim: set ts=2 expandtab:
+"""
+
+Module: animation
+Desc: Build structures of consecutive and parallel animated events
+Author: John O'Neil
+Email: oneil.john@gmail.com
+DATE: Saturday, December 21st 2013
+  
+""" 
 
 class Animation(object):
   """Basic animation queueable object. Top of a tree structure that describes
@@ -12,8 +21,22 @@ class Animation(object):
     super(Animation, self).__init__()
     self.sibling = None
     self.child = None
+    self.complete = False
+    self.updated = False
 
-  def Update_siblings(self, dt, complete):
+  def done(self):
+    self.complete = True
+
+  def is_complete(self):
+    return self.complete
+
+  def before_first_update(self, dt):
+    pass
+
+  def after_last_update(self, dt):
+    pass
+
+  def update(self, dt):
     """Basic implementation of update functionality (uptate siblings,
       return child when this animation is complete, isolated in a
       method so that derived implementations can reuse it easily.
@@ -24,14 +47,16 @@ class Animation(object):
       :returns a reference to the current object (self) or the next if
       this animation is complete.
     """
-    #update all siblings. This eliminates completed siblings via State pattern
+    if not self.updated:
+      self.before_first_update(dt)
+      self.updated = True
+
+    self.do_update(dt)
+
     if self.sibling:
       self.sibling = self.sibling.update(dt)
 
-    #If we've completed this task, we'll return the first child (via state pattern again)
-    #but don't forget to move siblings to the finished task to the next child.
-    #if there is no child, however, return the first sibling.
-    if not complete:
+    if not self.complete:
       return self
 
     if self.child:
@@ -40,7 +65,7 @@ class Animation(object):
     else:
       return self.sibling
 
-  def update(self, dt):
+  def do_update(self, dt):
     """Update the animation.
        This is meant to be called like:
        >>>
@@ -55,7 +80,7 @@ class Animation(object):
       :type dt: float
       :returns Animation object or None if the animation is complete
     """
-    return update_siblings(self, True)
+    pass
     
 
   def AND(self, sibling):

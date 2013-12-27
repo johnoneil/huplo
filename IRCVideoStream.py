@@ -28,6 +28,7 @@ from GamerStyle import GamerStyle
 from text import TextManager
 from list import ListManager
 from chat_display import ChatManager
+from animated_scrolling_queue import QueueManager as AnimatedQueueManager
 
 import logging
 import argparse
@@ -58,6 +59,7 @@ class IRCOverlayVideoStream(object):
     #self.DrawHandlers.append(GamerStyle())
     self.DrawHandlers.append(ListManager())
     self.DrawHandlers.append(ChatManager())
+    self.DrawHandlers.append(AnimatedQueueManager())
 
     self.pipeline = gst.Pipeline("mypipeline")
 
