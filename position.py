@@ -35,7 +35,6 @@ class To(Animation):
       self.tweener.update(dt)
       if not self.tweener.has_tweens():
         self.done()
-      print str(self.pos.x) + ':' + str(self.pos.y)
 
 class Position(object):
   def __init__(self, x, y):

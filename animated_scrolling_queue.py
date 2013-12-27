@@ -60,7 +60,7 @@ class Message(Position):
 
 
 class Queue(object):
-  def __init__(self, size=10, y=300, speed=200, pause_in_seconds=3):
+  def __init__(self, size=10, y=550, speed=200, pause_in_seconds=3):
     self.messages = []
     self.size = size
     self.y = y

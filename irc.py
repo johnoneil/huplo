@@ -83,6 +83,8 @@ def formatting_to_pango_markup(msg):
   '''
   msg = decode(msg)
   msg = re.sub(r'&','&amp;', msg)
+  msg = re.sub(r'\<','&lt;', msg)
+  msg = re.sub(r'\>','&gt;', msg)
   class MarkupFunctor(object):
     def __init__(self):
       self.match_found = False

@@ -235,13 +235,9 @@ class Tweener:
       t_delay = kwargs.pop("tweenDelay")
     else: t_delay = 0
 
-    print 'about to add a tween'
     tw = Tween(obj, t_time, t_type, t_completeFunc, t_updateFunc, t_delay, **kwargs)
     if tw:    
       self.currentTweens.append(tw)
-      print 'tween added ' + str(tw)
-    else:
-      print 'failed to add tween'
     return tw
  
   def removeTween(tweenObj):
@@ -269,10 +265,8 @@ class Tweener:
   def update(self, timeSinceLastFrame):
     for t in self.currentTweens:
       if not t.complete:
-        print 'updating tween'
         t.update(timeSinceLastFrame)
       else:
-        print 'removing tween from tweener.'
         self.currentTweens.remove(t)
  
 class Tween(object):
@@ -281,7 +275,6 @@ class Tween(object):
     Tween object:
     Can be created directly, but much more easily using Tweener.addTween( ... )
     """
-    #print obj, tduration, kwargs
     self.duration = tduration
     self.delay = delay
     self.target = obj
@@ -323,19 +316,12 @@ class Tween(object):
       except:
         func = getattr(self.target, k)
         funcName = k
-        # print "startvalue for %s: %s" % (k,startVal)
             
       if func:
-        #print "yes func"
         try:
-          #print funcName.replace("set", "get")
           getFunc = getattr(self.target, funcName.replace("set", "get") )
           startVal = getFunc()
         except:
-          #print "start value 0"
-          # no start value, assume its 0
-          # but make sure the start and change
-          # dataTypes match :)
           startVal = change * 0
         tweenable = Tweenable( startVal, change)    
         newFunc = [ k, func, tweenable]
@@ -364,7 +350,6 @@ class Tween(object):
     """Update this tween with the time since the last frame
         if there is an update function, it is always called
         whether the tween is running or paused"""
-    print 'Tween update()'
     if self.paused:
       if self.delay > 0:
         self.delay = max( 0, self.delay - ptime )
@@ -376,21 +361,14 @@ class Tween(object):
       return
 
     self.delta = min(self.delta + ptime, self.duration)
-    print 'delta ' + str(self.delta)
 
     if not self.complete:
-      print 'tween not yet complete.'
       for propName, prop, tweenable in self.tProps:
-        print 'updating ' + str(propName) + ' ' + str(prop)
-        print 'before update prop value is ' + str(self.target.__dict__[prop])
         self.target.__dict__[prop] = self.tween( self.delta, tweenable.startValue, tweenable.change, self.duration)
-        print 'after update prop update value is ' + str(self.target.__dict__[prop])
       for funcName, func, tweenable in self.tFuncs:
-        print 'updating ' + str(funcName) + ' ' + str(func)
         func( self.tween(self.delta, tweenable.startValue, tweenable.change, self.duration))
 
     if self.delta == self.duration:
-      print 'delta equals duration '
       self.complete = True
       if self.completeFunction:
         self.completeFunction()
