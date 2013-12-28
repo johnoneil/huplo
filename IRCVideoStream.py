@@ -59,7 +59,7 @@ class IRCOverlayVideoStream(object):
     self.text.add_overlay(TextManager())
     self.text.add_overlay(ListManager())
     self.text.add_overlay(ChatManager())
-    self.text.add_overlay(AnimatedQueueManager())
+    self.text.add_overlay(AnimatedQueueManager('DisplayOne'))
     self.pipeline.add(self.text)
 
     self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")

@@ -27,7 +27,8 @@ from traceback import print_exc
 import sys
 import jsonpickle
 from huplo.chat_display import Chat
-from huplo.animated_scrolling_queue import Queue as AnimatedQueue
+#from huplo.animated_scrolling_queue import Queue as AnimatedQueue
+from huplo.animated_scrolling_queue import QueueClient as ScreenQueue
 from huplo.text import Text
 import string
 import huplo.irc as irc
@@ -38,12 +39,6 @@ DEFAULT_PORT = 6660
 class IRCVideoOverlayClient(twisted_irc.IRCClient):
   def connectionMade(self):
     twisted_irc.IRCClient.connectionMade(self)
-    bus = dbus.SessionBus()
-    remote_object = bus.get_object("com.VideoOverlay.AnimatedScrollingQueue",
-                                   "/QueueServer")
-
-    self.chat_iface = dbus.Interface(remote_object, "com.VideoOverlay.AnimatedScrollingQueue")
-
 
   def connectionLost(self, reason):
     twisted_irc.IRCClient.connectionLost(self, reason)
@@ -70,10 +65,7 @@ class IRCVideoOverlayClient(twisted_irc.IRCClient):
     Initialize a chat dialog on the screen that will later
     be updated with posts as the chat progresses.
     '''
-    #chat = Chat(show_shading=True)
-    queue = AnimatedQueue()
-    pickled = jsonpickle.encode(queue)
-    self.chat_iface.add_queue(unicode(channel), unicode(pickled))
+    self.factory.screen_queue.add_queue(unicode(channel))
 
   def privmsg(self, user, channel, msg):
     '''
@@ -83,41 +75,41 @@ class IRCVideoOverlayClient(twisted_irc.IRCClient):
     nick, vhost = irc.split_speaker(user)
     msg = '\x02\x0315{nick}[\x03{msg}\x0315]'.format(nick=nick, msg=msg)
     msg = irc.formatting_to_pango_markup(msg)
-    self.chat_iface.add_message(unicode(channel), msg)
+    self.factory.screen_queue.add_message(unicode(channel), msg)
 
   def userJoined(self, user, channel):
     #nick, vhost = irc.split_speaker(user)
     nick = user
     msg = '\x039{nick} has joined {channel}'.format(nick=nick, channel=channel)
     msg = irc.formatting_to_pango_markup(msg)
-    self.chat_iface.add_message(unicode(channel), msg)
+    self.factory.screen_queue.add_message(unicode(channel), msg)
 
   def userLeft(self, user, channel):
     #nick, vhost = irc.split_speaker(user)
     nick = user
     msg = '\x034{nick} has joined {channel}'.format(nick=nick, channel=channel)
     msg = irc.formatting_to_pango_markup(msg)
-    self.chat_iface.add_message(unicode(channel), msg)
+    self.factory.screen_queue.add_message(unicode(channel), msg)
 
   def userQuit(self, user, quitMessage):
     #nick, vhost = irc.split_speaker(user)
     nick = user
     msg = '\x034{nick} has quit:{quitMessage}'.format(nick=nick, quitMessage=quitMessage)
     msg = irc.formatting_to_pango_markup(msg)
-    self.chat_iface.add_message(u'', msg)
+    self.factory.screen_queue.add_message('', msg)
 
   def userKicked(self, kickee, channel, kicker, message):
     kickee_nick, kickee_vhost = irc.split_speaker(kickee)
     kicker_nick, kicker_vhost = irc.split_speaker(kicker)
     msg = '\x030{kicker} has kicked {kickee} from {channel}. {message}]'.format(kicker=kicker, kickee=kickee, channel=channel, message=message)
     msg = irc.formatting_to_pango_markup(msg)
-    self.chat_iface.add_message(unicode(channel), msg)
+    self.factory.screen_queue.add_message(unicode(channel), msg)
 
   def action(self, user, channel, data):
     nick, vhost = irc.split_speaker(user)
     msg = '\x034{nick} {data}]'.format(nick=nick, data=data)
     msg = irc.formatting_to_pango_markup(msg)
-    self.chat_iface.add_message(unicode(channel), msg)
+    self.factory.screen_queue.add_message(unicode(channel), msg)
 
 
   def irc_RPL_TOPIC(self, prefix, params):
@@ -148,6 +140,7 @@ class IRCVideoOverlayClientFactory(protocol.ClientFactory):
   def __init__(self, network_name, network):
     self.network_name = network_name
     self.network = network
+    self.screen_queue = ScreenQueue('DisplayOne')
 
   def clientConnectionLost(self, connector, reason):
     connector.connect()
@@ -183,44 +176,40 @@ def main():
   parser.add_argument('-s', '--ssl', help='Connect to server via SSL.', action="store_true")
   args = parser.parse_args()
   
-  try:
-    hostname, port = split_server_port(args.hostname)
-    if args.verbose:
-      print 'Connecting to ' + hostname + ' on port ' + str(port) +'.'
-    
-    credentials = {
-        'nickname': args.nickname,
-        'realname': args.realname if len(args.realname)>0 else args.nickname,
-        'username': args.username if len(args.username)>0 else args.nickname,
-        'nickserv_pw': args.password
-    }
-    #we've got to add thise to the client, which is odd as fuq
-    IRCVideoOverlayClient.nickname = credentials['nickname']
-    IRCVideoOverlayClient.realname = credentials['realname']
-    IRCVideoOverlayClient.username = credentials['username']
-    IRCVideoOverlayClient.password = credentials['nickserv_pw']
-    
-    channels = (args.channel,)
+  hostname, port = split_server_port(args.hostname)
+  if args.verbose:
+    print 'Connecting to ' + hostname + ' on port ' + str(port) +'.'
+  
+  credentials = {
+      'nickname': args.nickname,
+      'realname': args.realname if len(args.realname)>0 else args.nickname,
+      'username': args.username if len(args.username)>0 else args.nickname,
+      'nickserv_pw': args.password
+  }
+  #we've got to add thise to the client, which is odd as fuq
+  IRCVideoOverlayClient.nickname = credentials['nickname']
+  IRCVideoOverlayClient.realname = credentials['realname']
+  IRCVideoOverlayClient.username = credentials['username']
+  IRCVideoOverlayClient.password = credentials['nickserv_pw']
+  
+  channels = (args.channel,)
 
-    network = {
-        'host': hostname,
-        'port': port,
-        'ssl': args.ssl,
-        'identity': credentials,
-        'autojoin': channels
-    }
+  network = {
+      'host': hostname,
+      'port': port,
+      'ssl': args.ssl,
+      'identity': credentials,
+      'autojoin': channels
+  }
 
-    factory = IRCVideoOverlayClientFactory(hostname, network)
-    if args.ssl:
-      reactor.connectSSL(hostname, port, factory, ssl.ClientContextFactory())
-    else:
-      reactor.connectTCP(hostname, port, factory)
+  factory = IRCVideoOverlayClientFactory(hostname, network)
+  if args.ssl:
+    reactor.connectSSL(hostname, port, factory, ssl.ClientContextFactory())
+  else:
+    reactor.connectTCP(hostname, port, factory)
 
-    reactor.run()
+  reactor.run()
 
-  except dbus.DBusException:
-    print_exc()
-    sys.exit(1)
 
 if __name__ == '__main__':
   main() 

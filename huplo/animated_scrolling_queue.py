@@ -169,9 +169,11 @@ class Queue(object):
       msg.on_draw(ctx, width, height, timestamp, deltaT)
 
 class QueueManager(object):
-  def __init__(self):
+  def __init__(self, display_name):
     self.queues = {}
+    self.display_name = display_name
     self.server = QueueServer(self)
+    
 
   def add_queue(self, queue_name, new_queue):
     self.queues[queue_name] = new_queue
@@ -199,9 +201,11 @@ class QueueManager(object):
 class QueueServer(dbus.service.Object):
 
   def __init__(self, manager):
-    bus_name = dbus.service.BusName('com.VideoOverlay.AnimatedScrollingQueue', bus=dbus.SessionBus())
-    dbus.service.Object.__init__(self, bus_name, '/QueueServer')
     self.manager = manager
+    bus_name = dbus.service.BusName('com.VideoOverlay.AnimatedScrollingQueue', bus=dbus.SessionBus())
+    remote_object_name = '/QueueServer'+self.manager.display_name
+    dbus.service.Object.__init__(self, bus_name, remote_object_name)
+    
 
   @dbus.service.method("com.VideoOverlay.AnimatedScrollingQueue",
                        in_signature='ss', out_signature='')
@@ -232,4 +236,56 @@ class QueueServer(dbus.service.Object):
   def clear_all_queues(self):
     self.manager.clear()
 
+
+class QueueClient(object):
+  def __init__(self, display_name):
+    self.display_name = display_name
+    self.remote_object_name = '/QueueServer'+ self.display_name
+    self.chat_iface = None
+    self.get_dbus()
+
+  def get_dbus(self):
+    if self.chat_iface:
+      return
+    try:
+      bus = dbus.SessionBus()
+      remote_object = bus.get_object("com.VideoOverlay.AnimatedScrollingQueue",
+                                   self.remote_object_name)
+
+      self.chat_iface = dbus.Interface(remote_object,\
+      "com.VideoOverlay.AnimatedScrollingQueue")
+    except dbus.DBusException:
+      print 'Unable to get dbus at this time.'
+
+  def add_queue(self, queue_name, size=10, y=550, speed=200, pause_in_seconds=3):
+    self.get_dbus()
+    if not self.chat_iface:
+      return;
+    queue = Queue(size=size, y=y, speed=speed, pause_in_seconds=pause_in_seconds)
+    pickled = jsonpickle.encode(queue)
+    self.chat_iface.add_queue(queue_name, unicode(pickled))
+
+  def add_message(self, queue_name, text):
+    self.get_dbus()
+    if not self.chat_iface:
+      return
+    self.chat_iface.add_message(queue_name, text)
+
+  def remove_queue(self, queue_name):
+    self.get_dbus()
+    if not self.chat_iface:
+      return
+    self.chat_iface.remove_queue(queue_name)
+
+  def clear_queue(self, queue_name):
+    self.get_dbus()
+    if not self.chat_iface:
+      return
+    self.chat_iface.clear_queue(queue_name)
+
+  def clear_all_queues(self):
+    self.get_dbus()
+    if not self.chat_iface:
+      return
+    self.chat_iface.clear_all_queues()
   
