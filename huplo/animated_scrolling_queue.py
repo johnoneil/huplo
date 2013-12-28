@@ -87,14 +87,38 @@ class Message(Position):
     pangoCtx = pangocairo.CairoContext(ctx)
     msglayout = pangoCtx.create_layout()
     #make sure all messages fit on the screen?
-    msglayout.set_width( pango.SCALE * width )
+    msglayout.set_width( pango.SCALE * width *2 / 3 )
     msglayout.set_alignment(pango.ALIGN_LEFT)
-    msglayout.set_wrap(pango.WRAP_WORD_CHAR)
+    #msglayout.set_wrap(pango.WRAP_WORD_CHAR)
+    msglayout.set_ellipsize(pango.ELLIPSIZE_END)
     msglayout.set_font_description(pango.FontDescription(self.default_style))
     msgattrs, msgtext, msgaccel = pango.parse_markup(msg)
     msglayout.set_attributes(msgattrs)
     msglayout.set_text(msgtext)
     pangoCtx.update_layout(msglayout)
+    [ink_rect, logical_rect] = msglayout.get_pixel_extents()
+    msg_width = logical_rect[2]
+    msg_height = logical_rect[3]
+
+    
+    ctx.set_source_rgba(0.0, 0.0, 0.0, 0.5)
+    linear = cairo.LinearGradient(self.x+msg_width/2, self.y-5, self.x+msg_width/2, self.y+msg_height+5)
+    linear.add_color_stop_rgba(0, 0.0, 0.0, 0.0, 0.0)
+    linear.add_color_stop_rgba(0.5, 0.0, 0.0, 0.0, 0.75)
+    linear.add_color_stop_rgba(1.0, 0.0, 0.0, 0.0, 0.0)
+
+    #radial = cairo.RadialGradient(msg_width/2, msg_height/2, msg_height/4, msg_width/2, msg_height/2, 3*msg_height/4)
+    #radial.add_color_stop_rgba(0, 0, 0, 0, 1)
+    #radial.add_color_stop_rgba(0.8, 0, 0, 0, 0)
+
+    
+    ctx.set_source(linear)
+    #ctx.set_source_rgba(0.0, 0.0, 0.0, 0.5)
+    #ctx.mask(linear)
+    #ctx.move_to(self.x, self.y)
+    #ctx.rectangle (self.x, self.y, msg_width, msg_height)
+    ctx.rectangle(self.x, self.y-5, msg_width, msg_height+10)
+    ctx.fill()
 
     ctx.move_to(self.x, self.y)
     ctx.set_source_rgb(1,1,0)
@@ -143,21 +167,6 @@ class Queue(object):
 
     for msg in self.messages:
       msg.on_draw(ctx, width, height, timestamp, deltaT)
-    '''
-    if not self.animation and len(self.messages)>0:
-      msg = self.messages.pop(0)
-      self.current_message = Message(msg, y=self.y, x=width+20)
-      self.animation = self.current_message.to(y=self.y, x=50, t=2.5, tween_type=Tweener.OUT_BOUNCE)\
-      .THEN(self.current_message.to_relative(0, -100, t=4.0))\
-      .THEN(self.current_message.to_relative(width, 0, t=1.0, tween_type=Tweener.IN_CUBIC))
-
-    if self.animation:
-      self.animation = self.animation.update(deltaT)
-    if self.current_message:
-      self.current_message.on_draw(ctx, width, height, timestamp, deltaT)
-    if not self.animation:
-      self.current_message = None
-    '''
 
 class QueueManager(object):
   def __init__(self):

@@ -81,6 +81,41 @@ class IRCVideoOverlayClient(twisted_irc.IRCClient):
     Here it's used to pass chat posts to video overlay via dbus
     '''
     nick, vhost = irc.split_speaker(user)
+    msg = '\x02\x0315{nick}[\x03{msg}\x0315]'.format(nick=nick, msg=msg)
+    msg = irc.formatting_to_pango_markup(msg)
+    self.chat_iface.add_message(unicode(channel), msg)
+
+  def userJoined(self, user, channel):
+    #nick, vhost = irc.split_speaker(user)
+    nick = user
+    msg = '\x039{nick} has joined {channel}'.format(nick=nick, channel=channel)
+    msg = irc.formatting_to_pango_markup(msg)
+    self.chat_iface.add_message(unicode(channel), msg)
+
+  def userLeft(self, user, channel):
+    #nick, vhost = irc.split_speaker(user)
+    nick = user
+    msg = '\x034{nick} has joined {channel}'.format(nick=nick, channel=channel)
+    msg = irc.formatting_to_pango_markup(msg)
+    self.chat_iface.add_message(unicode(channel), msg)
+
+  def userQuit(self, user, quitMessage):
+    #nick, vhost = irc.split_speaker(user)
+    nick = user
+    msg = '\x034{nick} has quit:{quitMessage}'.format(nick=nick, quitMessage=quitMessage)
+    msg = irc.formatting_to_pango_markup(msg)
+    self.chat_iface.add_message(u'', msg)
+
+  def userKicked(self, kickee, channel, kicker, message):
+    kickee_nick, kickee_vhost = irc.split_speaker(kickee)
+    kicker_nick, kicker_vhost = irc.split_speaker(kicker)
+    msg = '\x030{kicker} has kicked {kickee} from {channel}. {message}]'.format(kicker=kicker, kickee=kickee, channel=channel, message=message)
+    msg = irc.formatting_to_pango_markup(msg)
+    self.chat_iface.add_message(unicode(channel), msg)
+
+  def action(self, user, channel, data):
+    nick, vhost = irc.split_speaker(user)
+    msg = '\x034{nick} {data}]'.format(nick=nick, data=data)
     msg = irc.formatting_to_pango_markup(msg)
     self.chat_iface.add_message(unicode(channel), msg)
 
