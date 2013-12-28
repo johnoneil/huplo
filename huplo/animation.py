@@ -25,6 +25,9 @@ class Animation(object):
     self.updated = False
 
   def done(self):
+    '''
+    Method that derived classes ought to call when they complete what they've got to do
+    '''
     self.complete = True
 
   def is_complete(self):
@@ -66,20 +69,11 @@ class Animation(object):
       return self.sibling
 
   def do_update(self, dt):
-    """Update the animation.
-       This is meant to be called like:
-       >>>
-        if( myAnimation is not None):
-          myAnimation = myAnimation.Update(dt)
-       >>>
-       thus
-       using the state pattern, myAnimation will be assigned with the subsequent 
-       next animation after the initial action (and its siblings) are complete.
-       When the entire animation is complete myAnimation.Update(dt) returns None
-      :param dt: Time elapsed in seconds since last update
-      :type dt: float
-      :returns Animation object or None if the animation is complete
-    """
+    '''
+    Derived classes ought to override this method to implement update loops
+    They ought not override update() as that contains most of the basic update
+    support and calls this update at the appropriate point.
+    '''
     pass
     
 

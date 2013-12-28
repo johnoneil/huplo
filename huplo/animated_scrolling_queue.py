@@ -23,15 +23,57 @@ from time import gmtime, strftime
 from position import Position
 from pause import Pause
 from pyTweener import Tweener
+from animation import Animation
+
+class Remove(Animation):
+  def __init__(self, msg):
+    super(Remove, self).__init__()
+    self.msg = msg
+
+  def before_first_update(self, dt):
+    self.msg.manager.remove(self.msg)
+    self.done()
 
 class Message(Position):
-  def __init__(self, text, x=0, y=0, default_style='Arial 16'):
+  ttl = 10.0
+  def __init__(self, manager, text, x=0, y=0, default_style='Arial 16'):
     Position.__init__(self, x=x, y=y)
+    self.manager = manager
     self.text = text
     self.default_style = default_style
+    self.animation = None
+    self.time_onscreen = 0.0
 
-  def update(self, dt):
-    return Position.update(self, dt)
+  def is_viable(self):
+    return self.time_onscreen < Message.ttl
+
+  def slide_in(self, y, w, h):
+    self.x = w+20
+    self.y = y
+    self.animation = self.to(y=self.y, x=50, t=2.5, tween_type=Tweener.OUT_BOUNCE)
+
+  def slide_up(self):
+    up = self.to_relative(0, -30, t=1.0)
+    if self.animation:
+      self.animation.THEN(up)
+    else:
+      self.animation = up
+
+  def slide_out(self):
+    out = self.to_relative(1200, 0, t=1.0).THEN(Remove(self))
+    if self.animation:
+      self.animation.THEN(out)
+    else:
+      self.animation = out
+
+  def do_update(self, dt):
+    self.time_onscreen += dt
+
+    if not self.is_viable():
+      self.slide_out()
+
+    if self.animation:
+      self.animation = self.animation.update(dt)
 
   def on_draw(self, ctx, width, height, timestamp, deltaT):
     msg = self.text
@@ -74,13 +116,34 @@ class Queue(object):
     Don't add any new messages if it'll oveflow the queue
     Overlfow is just lost (ignored)
     '''
+    #queue up an upward movement for all messages onscreen that are still viable
+    for message in self.messages:
+      if message.is_viable():
+        message.slide_up()
     if len(self.messages)<self.size:
-      self.messages.append(msg)
+      new_msg = Message(self, msg, x=-900, y=self.y)
+      new_msg.slide_in(self.y, 1200, 700)
+      self.messages.append(new_msg)
+
+  def remove(self, msg):
+    '''
+    remove an instance of Message class from our queue
+    '''
+    if msg in self.messages:
+      self.messages.remove(msg)
 
   def clear(self):
     self.messages.clear()
 
   def on_draw(self, ctx, width, height, timestamp, deltaT):
+    #it's not strictly necessary, but I'm going to update
+    #and draw current messages separately.
+    for msg in self.messages:
+      msg.do_update(deltaT)
+
+    for msg in self.messages:
+      msg.on_draw(ctx, width, height, timestamp, deltaT)
+    '''
     if not self.animation and len(self.messages)>0:
       msg = self.messages.pop(0)
       self.current_message = Message(msg, y=self.y, x=width+20)
@@ -94,6 +157,7 @@ class Queue(object):
       self.current_message.on_draw(ctx, width, height, timestamp, deltaT)
     if not self.animation:
       self.current_message = None
+    '''
 
 class QueueManager(object):
   def __init__(self):
