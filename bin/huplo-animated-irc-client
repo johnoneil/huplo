@@ -26,9 +26,6 @@ import argparse
 from traceback import print_exc
 import sys
 import jsonpickle
-#from huplo.chat_display import Chat
-#from huplo.animated_scrolling_queue import Queue as AnimatedQueue
-#from huplo.text import Text
 from huplo.animated_scrolling_queue import Queue as ChatVideoOverlay
 from huplo.text import TextClient as TextvideoOverlay
 import string
