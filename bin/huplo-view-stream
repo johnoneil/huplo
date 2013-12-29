@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # vim: set ts=2 expandtab:
 """
-Module: IRCVideoStream
-Desc: A simple gstreamer based way to monitor an IRC chat atop a video stream
+Module: huplo-view-stream
+Desc: Build a gstreamer stream to view an html video stream with huplo overlay
 Author: John O'Neil
 Email:
 
@@ -39,16 +39,16 @@ class IRCOverlayVideoStream(object):
     Primary module class. Instantiate to create a rendered video stream
   with an overlaid IRC chat.
   """
-  def __init__(self, URI):
+  def __init__(self, uri, display_name):
     """ Initialize and start rendered gstreamer video stream with IRC overlay.
 
     :param URI: URI address of video stream to render.
     :type URI: str.   
     """
-    self.pipeline = gst.Pipeline("mypipeline")
+    self.pipeline = gst.Pipeline(display_name)
 
     self.uribin = gst.element_factory_make("uridecodebin","uribin")
-    self.uribin.set_property("uri", URI )
+    self.uribin.set_property("uri", uri )
     self.pipeline.add(self.uribin)
 
     self.playsink = gst.element_factory_make("playsink", "playsink")
@@ -59,7 +59,7 @@ class IRCOverlayVideoStream(object):
     self.text.add_overlay(TextManager())
     self.text.add_overlay(ListManager())
     self.text.add_overlay(ChatManager())
-    self.text.add_overlay(AnimatedQueueManager())
+    self.text.add_overlay(AnimatedQueueManager(display_name))
     self.pipeline.add(self.text)
 
     self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
@@ -121,10 +121,12 @@ class IRCOverlayVideoStream(object):
 
 
 def main():
-  usage = 'usage: --host <irc hostname> --port <irc port> --nick <irc nickname> --channel <irc channel> --stream <media stream to overlay>'
+  usage = 'usage: --url <stream url> --display <display name>'
   parser = argparse.ArgumentParser(description=usage)
   parser.add_argument("-s", "--stream", dest="STREAM_URL",
                       help="stream URL to open")
+  parser.add_argument("-d", "--display", dest="DISPLAY_NAME",
+                      help="display name. Clients can attach text displays via this friendlyname.", default='')
   parser.add_argument("-v", "--verbose",
                       action="store_true", dest="verbose")
   parser.add_argument("-q", "--quiet",
@@ -137,7 +139,7 @@ def main():
 
   dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
-  stream = IRCOverlayVideoStream(args.STREAM_URL)
+  stream = IRCOverlayVideoStream(args.STREAM_URL, args.DISPLAY_NAME)
 
   gtk.main()
   
