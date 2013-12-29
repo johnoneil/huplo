@@ -129,7 +129,7 @@ class TextServer(dbus.service.Object):
 
   @dbus.service.method("com.VideoOverlay.Text",
                        in_signature='ss', out_signature='')
-  def AddText(self, name, json_data):
+  def add_text(self, name, json_data):
     text = jsonpickle.decode(unicode(json_data))
     if not isinstance(text, Text):
       print str(type(text)) +': This is not an instance of Text'
@@ -138,10 +138,52 @@ class TextServer(dbus.service.Object):
 
   @dbus.service.method("com.VideoOverlay.Text",
                        in_signature='s', out_signature='')
-  def RemoveText(self, name):
+  def remove_text(self, name):
     self.manager.Remove(name)
 
   @dbus.service.method("com.VideoOverlay.Text",
                        in_signature='', out_signature='')
-  def Clear(self):
+  def clear(self):
     self.manager.Clear()
+
+
+class TextClient(object):
+  def __init__(self, display_name):
+    self.display_name = display_name
+    self.remote_object_name = '/QueueServer'+ self.display_name
+    self.text_iface = None
+    self.get_dbus()
+
+  def get_dbus(self):
+    if self.text_iface:
+      return
+    try:
+      bus = dbus.SessionBus()
+      remote_object = bus.get_object("com.VideoOverlay.Text",
+                                   self.remote_object_name)
+
+      self.text_iface = dbus.Interface(remote_object,\
+      "com.VideoOverlay.Text")
+    except dbus.DBusException:
+      print 'Unable to get dbus at this time.'
+
+  def add_text(self,name, message, x=300, y=300, show_shading=False):
+    self.get_dbus()
+    if not self.text_iface:
+      return;
+    text = Text(message, x=x, y=y, show_shading=show_shading)
+    pickled = jsonpickle.encode(text)
+    self.text_iface.add_queue(name, unicode(pickled))
+
+  def remove_text(self, name):
+    self.get_dbus()
+    if not self.text_iface:
+      return
+    self.text_iface.remove_text(name)
+
+  def clear_all_queues(self):
+    self.get_dbus()
+    if not self.text_iface:
+      return
+    self.text_iface.clear()
+  

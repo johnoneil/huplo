@@ -240,7 +240,7 @@ class QueueServer(dbus.service.Object):
 class QueueClient(object):
   def __init__(self, display_name):
     self.display_name = display_name
-    self.remote_object_name = '/QueueServer'+ self.display_name
+    self.remote_object_name = '/TextServer'+ self.display_name
     self.chat_iface = None
     self.get_dbus()
 
