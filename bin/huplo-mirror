@@ -2,9 +2,16 @@
 # vim: set ts=2 expandtab:
 """
 Module: huplo-view-stream
-Desc: Build a gstreamer stream to view an html video stream with huplo overlay
+Desc: Relay an existing video stream via a TCP server and allow text overlay
 Author: John O'Neil
-Email:
+Email: oneil.john@gmail.com
+
+Simple stream realy with text overlay.
+Point the relay at an existing stream URL and we can relay it
+via another TCP server.
+Relaying like this (and transcoding to H264/MP3) allows us
+to access the video and overlay dynamic text and graphics atop
+the video.
 
 """
 
@@ -34,57 +41,45 @@ from math import pi
 import dbus
 import dbus.service
 
-class IRCOverlayVideoStream(object):
-  """
-    Primary module class. Instantiate to create a rendered video stream
-  with an overlaid IRC chat.
-  """
-  def __init__(self, uri, display_name):
-    """ Initialize and start rendered gstreamer video stream with IRC overlay.
-
+class StreamRelayWithTextOverlay(object):
+  '''Relay a video+audio stream given its URL, with the option to overlay dynamic text
+    on the stream contents.
+    Has been tested on mpeg TS (h264/mp3) and .nsv (shoutcast) streams.
+  '''
+  def __init__(self, uri, display_name, host='127.0.0.1', port=10000):
+    '''Initialize and start rendered gstreamer video stream with IRC overlay.
+    Stream currently relayed as MPEG TS (h264/mp3)
     :param URI: URI address of video stream to render.
-    :type URI: str.  
-
-
-    gst-launch videotestsrc ! ffenc_mpeg4 ! rtpmp4vpay send-config=true ! udpsink host=127.0.0.1 port=5000
-    gst-launch -v v4l2src always-copy=FALSE ! TIVidenc1 codecName=mpeg4enc engineName=encode contiguousInputFrame=TRUE ! rtpmp4vpay pt=96 ! udpsink host=<HOST IP ADDRESS> port=5000
-
-  gst-launch rtpmux name=mux ! udpsink host=127.0.0.1 port=8888        \
-             alsasrc ! alawenc ! rtppcmapay !                        \
-             application/x-rtp, payload=8, rate=8000 ! mux.sink_0    \
-             audiotestsrc is-live=1 !                                \
-             mulawenc ! rtppcmupay !                                 \
-             application/x-rtp, payload=0, rate=8000 ! mux.sink_1
-
-  gst-launch rtpmux name=mux ! udpsink host=127.0.0.1 port=8888        \
-             videotestsrc ! ffenc_mpeg4 ! rtpmp4vpay send-config=true ! \
-             application/x-rtp, payload=8, rate=8000 ! mux.sink_0    \
-             audiotestsrc is-live=1 !                                \
-             mulawenc ! rtppcmupay !                                 \
-             application/x-rtp, payload=0, rate=8000 ! mux.sink_1
-
-
-  server;
-  gst-launch v4l2src ! videorate ! 'video/x-raw-yuv,framerate=(fraction)30/1'  ! ffmpegcolorspace  ! jpegenc ! multipartmux ! tcpserversink host=127.0.0.1    port=5100
-
-  Client;
-  gst-launch tcpclientsrc  port=5100  !  multipartdemux   ! jpegdec  ! autovideosink
-
-gst-launch-1.0 -v souphttpsrc location="http://SOME_IP" is-live=true ! tsdemux name=demux ! queue ! mpegvideoparse ! mpeg2dec ! videoconvert ! omxh264enc control-rate=1 target-bitrate=1250000 ! video/x-h264,width=720,height=576,framerate=25/1,stream-format=byte-stream,profile=high ! h264parse ! matroskamux streamable=true name=mux ! tcpserversink host=MY_IP port=5000 demux. ! queue ! mpegaudioparse ! queue ! mad ! audioconvert ! queue ! voaacenc bitrate=128000 ! mux.
- 
-
-gst-launch -e v4l2src input-src=composite always-copy=FALSE ! video/x-raw-yuv,format=\(fourcc\)NV12,width=640,height=480 ! dmaiaccel ! dmaiperf print-arm-load=true ! dmaienc_h264 encodingpreset=2 targetbitrate=1000000 ratecontrol=2 ! queue ! mux. alsasrc ! dmaienc_aac outputBufferSize=131072 bitrate=44000 ! mux. mpegtsmux name=mux ! udpsink port=3001 host=10.251.101.60 sync=false enable-last-buffer=false 
-    """
+    :type URI: str.
+    :param host: hostname for relayed stream tcp server
+    :param port: port number for relayed stream tcp server 
+    '''
     self.pipeline = gst.Pipeline(display_name)
 
+    #primary source is URI decode bin, which can connect to stream
+    #and provide us with audio/video demuxed streams on separate pads.
+    #the pads appear to us as they're instantiated, via the demuxer callback
     self.uribin = gst.element_factory_make("uridecodebin","uribin")
     self.uribin.set_property("uri", uri )
     self.pipeline.add(self.uribin)
+    self.uribin.connect("pad-added", self._demuxer_callback)
 
-    self.playsink = gst.element_factory_make("tcpserversink", "playsink")
-    self.playsink.set_property("host", '127.0.0.1')
-    self.playsink.set_property('port', 10000)
-    self.pipeline.add(self.playsink)
+    #primary sink is a TCP server. Clients (like a VLC media player) can connect
+    #to the set host:port to receive our mpeg TS output.
+    #thus we instantiate a TSmux and TCP server at pipeline back end
+    self.mux = gst.element_factory_make('mpegtsmux', 'mux')
+    self.pipeline.add(self.mux)
+    self.tcpserver = gst.element_factory_make("tcpserversink", "tcpserver")
+    self.tcpserver.set_property("host", host)
+    self.tcpserver.set_property('port', port)
+    self.pipeline.add(self.tcpserver)
+    self.mux.link(self.tcpserver)
+
+    #our video pipeline is as follows
+    # -->convert-->text_overlay-->convert-->h264-->queue-->mux
+    #TODO: optimize this to do without conversion, queue or h264?
+    self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
+    self.pipeline.add(self.convert1)
 
     self.text = HeadsUpPresentatonLayer()
     self.text.add_overlay(TickerManager())
@@ -94,64 +89,53 @@ gst-launch -e v4l2src input-src=composite always-copy=FALSE ! video/x-raw-yuv,fo
     self.text.add_overlay(AnimatedQueueManager(display_name))
     self.pipeline.add(self.text)
 
+    self.convert2 = gst.element_factory_make("ffmpegcolorspace","convert2")
+    self.pipeline.add(self.convert2)
+
     self.h264 = gst.element_factory_make("x264enc","h264")
-    self.h264.set_property("bitrate", 256)
-    self.h264.set_property("subme", 4)
+    #self.h264.set_property("bitrate", 256)
+    #self.h264.set_property("subme", 4)
     #self.h264.set_property("b-pryamid", True)
-    self.h264.set_property("weightb", True)
+    #self.h264.set_property("weightb", True)
     self.pipeline.add(self.h264)
 
-    self.q1 = gst.element_factory_make("queue2","q1")
-    self.pipeline.add(self.q1)
+    self.video_queue = gst.element_factory_make("queue2","video_queue")
+    self.pipeline.add(self.video_queue)
 
-    self.q2 = gst.element_factory_make("queue2","q2")
-    self.pipeline.add(self.q2)
+    self.convert1.link(self.text)
+    self.text.link(self.convert2)
+    self.convert2.link(self.h264)
+    self.h264.link(self.video_queue)
+    self.video_queue.link(self.mux)
+
+    #construct audio queue elements, and hook into muxer
+    #audio pipeline goes like:
+    # -->audio_queue-->audioconv-->mp3enc-->mux
+    self.audio_queue = gst.element_factory_make("queue2","audio_queue")
+    self.pipeline.add(self.audio_queue)
     self.audioconv = gst.element_factory_make("audioconvert","audioconv")
     self.pipeline.add(self.audioconv)
     self.mp3enc = gst.element_factory_make("lamemp3enc", "mp3enc")
     self.pipeline.add(self.mp3enc)
-
-    self.mux = gst.element_factory_make('mpegtsmux', 'mux')
-    self.pipeline.add(self.mux)
-    #self.q1.link(self.mux)
-
-    #self.mux.link(self.playsink)
-
-    self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
-    self.pipeline.add(self.convert1)
-
-    self.convert2 = gst.element_factory_make("ffmpegcolorspace","convert2")
-    self.pipeline.add(self.convert2)
-
-    #link it all up (except for video out of uribin, which is linked in callback)
-    self.convert1.link(self.text)
-    self.text.link(self.convert2)
-    self.convert2.link(self.h264)
-    self.h264.link(self.q1)
-    self.q1.link(self.mux)
-    self.mux.link(self.playsink)
-    self.q2.link(self.audioconv)
+    
+    self.audio_queue.link(self.audioconv)
     self.audioconv.link(self.mp3enc)
     self.mp3enc.link(self.mux)
-    #self.q2.get_pad('src').link(self.mux.get_request_pad('sink_%d'))
-    self.uribin.connect("pad-added", self._demuxer_callback)
-
-
     
+    #Hook up the bus and set pipeline running
     bus = self.pipeline.get_bus()
     bus.add_signal_watch()
     bus.connect("message", self._on_message)  
-
     self.pipeline.set_state(gst.STATE_PAUSED)
     self.pipeline.set_state(gst.STATE_PLAYING)
 
   def push(self, msg):
-    """ Push an IRCMessage into the current IRC queue.
+    ''' Push an IRCMessage into the current IRC queue.
 
     :param msg: The IRC message we'd like to push to the front of the current
       queue
     :type msg: IRCMessage.
-    """
+    '''
     #for handler in self.DrawHandlers:
     #  handler.push(msg)
     pass
@@ -160,28 +144,9 @@ gst-launch -e v4l2src input-src=composite always-copy=FALSE ! video/x-raw-yuv,fo
     caps = pad.get_caps()
     name = caps[0].get_name()
     if(name == 'video/x-raw-rgb'):
-      print 'demuxer callback'
-      #pad.link(self.convert1.get_pad('sink'))
       pad.link(self.convert1.get_pad('sink'))
-      #self.convert1.get_pad('src').link(self.text.get_pad('sink'))
-      #pad.link(self.text.get_pad('sink'))
-      #self.text.get_pad('src').link(self.playsink.get_pad('video_sink'))
-      #self.text.get_pad('src').link(self.convert2.get_pad('sink'))
-      #self.convert2.get_pad('src').link(self.playsink.get_pad('video_sink'))
-      #self.convert2.get_pad('src').link(self.playsink.get_pad('sink'))
-      #self.convert2.get_pad('src').link(self.h264conv.get_pad('sink'))
-      #self.h264conv.get_pad('src').link(self.video_queue.get_pad('sink'))
-      #self.video_queue.get_pad('src').link(self.mux.get_pad('sink'))
-      #self.mux.get_pad('src').link(self.playsink.get_pad('sink'))
     else:
-      #sinkpad=adder.get_request_pad("sink%d")
-      #sinkpad = self.mux.get_request_pad('sink_%d')
-      #pad.link(sinkpad)
-      #pad.link(self.audioconv.get_pad('sink'))
-      #  pad.link(self.playsink.get_pad('audio_sink'))
-      pad.link(self.q2.get_pad('sink'))
-      #pass
-
+      pad.link(self.audio_queue.get_pad('sink'))
     return True
 
   def OnMessage(self, message):
@@ -220,10 +185,11 @@ def main():
 
   dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
-  stream = IRCOverlayVideoStream(args.STREAM_URL, args.DISPLAY_NAME)
+  stream = StreamRelayWithTextOverlay(args.STREAM_URL, args.DISPLAY_NAME)
 
   gtk.main()
   
 
 if __name__ == "__main__":
   main()
+
