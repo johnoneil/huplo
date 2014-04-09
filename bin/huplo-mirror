@@ -1,0 +1,224 @@
+#!/usr/bin/python
+# vim: set ts=2 expandtab:
+"""
+Module: huplo-view-stream
+Desc: Build a gstreamer stream to view an html video stream with huplo overlay
+Author: John O'Neil
+Email:
+
+"""
+
+import sys, os
+import pygtk
+pygtk.require ("2.0")
+import gtk
+import gobject
+gobject.threads_init()
+
+import pygst
+pygst.require('0.10')
+import gst
+
+from huplo.gstreamer import HeadsUpPresentatonLayer
+from huplo.ticker import TickerManager
+from huplo.text import TextManager
+from huplo.list import ListManager
+from huplo.chat_display import ChatManager
+from huplo.animated_scrolling_queue import QueueManager as AnimatedQueueManager
+
+import logging
+import argparse
+
+from math import pi
+
+import dbus
+import dbus.service
+
+class IRCOverlayVideoStream(object):
+  """
+    Primary module class. Instantiate to create a rendered video stream
+  with an overlaid IRC chat.
+  """
+  def __init__(self, uri, display_name):
+    """ Initialize and start rendered gstreamer video stream with IRC overlay.
+
+    :param URI: URI address of video stream to render.
+    :type URI: str.  
+
+
+    gst-launch videotestsrc ! ffenc_mpeg4 ! rtpmp4vpay send-config=true ! udpsink host=127.0.0.1 port=5000
+    gst-launch -v v4l2src always-copy=FALSE ! TIVidenc1 codecName=mpeg4enc engineName=encode contiguousInputFrame=TRUE ! rtpmp4vpay pt=96 ! udpsink host=<HOST IP ADDRESS> port=5000
+
+  gst-launch rtpmux name=mux ! udpsink host=127.0.0.1 port=8888        \
+             alsasrc ! alawenc ! rtppcmapay !                        \
+             application/x-rtp, payload=8, rate=8000 ! mux.sink_0    \
+             audiotestsrc is-live=1 !                                \
+             mulawenc ! rtppcmupay !                                 \
+             application/x-rtp, payload=0, rate=8000 ! mux.sink_1
+
+  gst-launch rtpmux name=mux ! udpsink host=127.0.0.1 port=8888        \
+             videotestsrc ! ffenc_mpeg4 ! rtpmp4vpay send-config=true ! \
+             application/x-rtp, payload=8, rate=8000 ! mux.sink_0    \
+             audiotestsrc is-live=1 !                                \
+             mulawenc ! rtppcmupay !                                 \
+             application/x-rtp, payload=0, rate=8000 ! mux.sink_1
+
+
+  server;
+  gst-launch v4l2src ! videorate ! 'video/x-raw-yuv,framerate=(fraction)30/1'  ! ffmpegcolorspace  ! jpegenc ! multipartmux ! tcpserversink host=127.0.0.1    port=5100
+
+  Client;
+  gst-launch tcpclientsrc  port=5100  !  multipartdemux   ! jpegdec  ! autovideosink
+
+gst-launch-1.0 -v souphttpsrc location="http://SOME_IP" is-live=true ! tsdemux name=demux ! queue ! mpegvideoparse ! mpeg2dec ! videoconvert ! omxh264enc control-rate=1 target-bitrate=1250000 ! video/x-h264,width=720,height=576,framerate=25/1,stream-format=byte-stream,profile=high ! h264parse ! matroskamux streamable=true name=mux ! tcpserversink host=MY_IP port=5000 demux. ! queue ! mpegaudioparse ! queue ! mad ! audioconvert ! queue ! voaacenc bitrate=128000 ! mux.
+ 
+
+gst-launch -e v4l2src input-src=composite always-copy=FALSE ! video/x-raw-yuv,format=\(fourcc\)NV12,width=640,height=480 ! dmaiaccel ! dmaiperf print-arm-load=true ! dmaienc_h264 encodingpreset=2 targetbitrate=1000000 ratecontrol=2 ! queue ! mux. alsasrc ! dmaienc_aac outputBufferSize=131072 bitrate=44000 ! mux. mpegtsmux name=mux ! udpsink port=3001 host=10.251.101.60 sync=false enable-last-buffer=false 
+    """
+    self.pipeline = gst.Pipeline(display_name)
+
+    self.uribin = gst.element_factory_make("uridecodebin","uribin")
+    self.uribin.set_property("uri", uri )
+    self.pipeline.add(self.uribin)
+
+    self.playsink = gst.element_factory_make("tcpserversink", "playsink")
+    self.playsink.set_property("host", '127.0.0.1')
+    self.playsink.set_property('port', 10000)
+    self.pipeline.add(self.playsink)
+
+    self.text = HeadsUpPresentatonLayer()
+    self.text.add_overlay(TickerManager())
+    self.text.add_overlay(TextManager())
+    self.text.add_overlay(ListManager())
+    self.text.add_overlay(ChatManager())
+    self.text.add_overlay(AnimatedQueueManager(display_name))
+    self.pipeline.add(self.text)
+
+    self.h264 = gst.element_factory_make("x264enc","h264")
+    self.h264.set_property("bitrate", 256)
+    self.h264.set_property("subme", 4)
+    #self.h264.set_property("b-pryamid", True)
+    self.h264.set_property("weightb", True)
+    self.pipeline.add(self.h264)
+
+    self.q1 = gst.element_factory_make("queue2","q1")
+    self.pipeline.add(self.q1)
+
+    #self.q2 = gst.element_factory_make("queue2","q2")
+    #self.pipeline.add(self.q2)
+    #self.audioconv = gst.element_factory_make("audioconvert","audioconv")
+    #self.pipeline.add(self.audioconv)
+
+    self.mux = gst.element_factory_make('mpegtsmux', 'mux')
+    self.pipeline.add(self.mux)
+    #self.q1.link(self.mux)
+
+    #self.mux.link(self.playsink)
+
+    self.convert1 = gst.element_factory_make("ffmpegcolorspace","convert1")
+    self.pipeline.add(self.convert1)
+
+    self.convert2 = gst.element_factory_make("ffmpegcolorspace","convert2")
+    self.pipeline.add(self.convert2)
+
+    #link it all up (except for video out of uribin, which is linked in callback)
+    self.convert1.link(self.text)
+    self.text.link(self.convert2)
+    self.convert2.link(self.h264)
+    self.h264.link(self.q1)
+    self.q1.link(self.mux)
+    self.mux.link(self.playsink)
+    #self.audioconv.link(self.q2)
+    #self.q2.get_pad('src').link(self.mux.get_request_pad('sink_%d'))
+    self.uribin.connect("pad-added", self._demuxer_callback)
+
+
+    
+    bus = self.pipeline.get_bus()
+    bus.add_signal_watch()
+    bus.connect("message", self._on_message)  
+
+    self.pipeline.set_state(gst.STATE_PAUSED)
+    self.pipeline.set_state(gst.STATE_PLAYING)
+
+  def push(self, msg):
+    """ Push an IRCMessage into the current IRC queue.
+
+    :param msg: The IRC message we'd like to push to the front of the current
+      queue
+    :type msg: IRCMessage.
+    """
+    #for handler in self.DrawHandlers:
+    #  handler.push(msg)
+    pass
+
+  def _demuxer_callback(self, uribin, pad):
+    caps = pad.get_caps()
+    name = caps[0].get_name()
+    if(name == 'video/x-raw-rgb'):
+      print 'demuxer callback'
+      #pad.link(self.convert1.get_pad('sink'))
+      pad.link(self.convert1.get_pad('sink'))
+      #self.convert1.get_pad('src').link(self.text.get_pad('sink'))
+      #pad.link(self.text.get_pad('sink'))
+      #self.text.get_pad('src').link(self.playsink.get_pad('video_sink'))
+      #self.text.get_pad('src').link(self.convert2.get_pad('sink'))
+      #self.convert2.get_pad('src').link(self.playsink.get_pad('video_sink'))
+      #self.convert2.get_pad('src').link(self.playsink.get_pad('sink'))
+      #self.convert2.get_pad('src').link(self.h264conv.get_pad('sink'))
+      #self.h264conv.get_pad('src').link(self.video_queue.get_pad('sink'))
+      #self.video_queue.get_pad('src').link(self.mux.get_pad('sink'))
+      #self.mux.get_pad('src').link(self.playsink.get_pad('sink'))
+    else:
+      #sinkpad=adder.get_request_pad("sink%d")
+      #sinkpad = self.mux.get_request_pad('sink_%d')
+      #pad.link(sinkpad)
+      #pad.link(self.audioconv.get_pad('sink'))
+      #  pad.link(self.playsink.get_pad('audio_sink'))
+      pass
+
+    return True
+
+  def OnMessage(self, message):
+    #print '***client msg*** ' + message
+    self.push(IRCMessage('UNKNOWN', 'vhost', message))
+
+  def _on_message(self, bus, message):
+    t = message.type
+    if t == gst.MESSAGE_EOS:
+      self.pipeline.set_state(gst.STATE_NULL)
+      print "message EOS"
+      gtk.main_quit()
+    elif t == gst.MESSAGE_ERROR:
+      self.pipeline.set_state(gst.STATE_NULL)
+      err, debug = message.parse_error()
+      print "Error: %s" % err, debug
+      gtk.main_quit()
+
+
+def main():
+  usage = 'usage: --url <stream url> --display <display name>'
+  parser = argparse.ArgumentParser(description=usage)
+  parser.add_argument("-s", "--stream", dest="STREAM_URL",
+                      help="stream URL to open")
+  parser.add_argument("-d", "--display", dest="DISPLAY_NAME",
+                      help="display name. Clients can attach text displays via this friendlyname.", default='')
+  parser.add_argument("-v", "--verbose",
+                      action="store_true", dest="verbose")
+  parser.add_argument("-q", "--quiet",
+                      action="store_false", dest="verbose")
+  args = parser.parse_args()
+  if not args.STREAM_URL:
+    parser.error(usage)
+  if args.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+
+  dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+  stream = IRCOverlayVideoStream(args.STREAM_URL, args.DISPLAY_NAME)
+
+  gtk.main()
+  
+
+if __name__ == "__main__":
+  main()
