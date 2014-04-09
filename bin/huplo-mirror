@@ -104,10 +104,12 @@ gst-launch -e v4l2src input-src=composite always-copy=FALSE ! video/x-raw-yuv,fo
     self.q1 = gst.element_factory_make("queue2","q1")
     self.pipeline.add(self.q1)
 
-    #self.q2 = gst.element_factory_make("queue2","q2")
-    #self.pipeline.add(self.q2)
-    #self.audioconv = gst.element_factory_make("audioconvert","audioconv")
-    #self.pipeline.add(self.audioconv)
+    self.q2 = gst.element_factory_make("queue2","q2")
+    self.pipeline.add(self.q2)
+    self.audioconv = gst.element_factory_make("audioconvert","audioconv")
+    self.pipeline.add(self.audioconv)
+    self.mp3enc = gst.element_factory_make("lamemp3enc", "mp3enc")
+    self.pipeline.add(self.mp3enc)
 
     self.mux = gst.element_factory_make('mpegtsmux', 'mux')
     self.pipeline.add(self.mux)
@@ -128,7 +130,9 @@ gst-launch -e v4l2src input-src=composite always-copy=FALSE ! video/x-raw-yuv,fo
     self.h264.link(self.q1)
     self.q1.link(self.mux)
     self.mux.link(self.playsink)
-    #self.audioconv.link(self.q2)
+    self.q2.link(self.audioconv)
+    self.audioconv.link(self.mp3enc)
+    self.mp3enc.link(self.mux)
     #self.q2.get_pad('src').link(self.mux.get_request_pad('sink_%d'))
     self.uribin.connect("pad-added", self._demuxer_callback)
 
@@ -175,7 +179,8 @@ gst-launch -e v4l2src input-src=composite always-copy=FALSE ! video/x-raw-yuv,fo
       #pad.link(sinkpad)
       #pad.link(self.audioconv.get_pad('sink'))
       #  pad.link(self.playsink.get_pad('audio_sink'))
-      pass
+      pad.link(self.q2.get_pad('sink'))
+      #pass
 
     return True
 
