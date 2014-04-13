@@ -1,40 +1,26 @@
 #!/usr/bin/python3
 
-from os import path
+#from os import path
+import argparse
 #support ctrl-c escape as per http://askubuntu.com/questions/160343/quit-application-on-ctrlc-in-quickly-framework
 import signal
 
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst, Gtk
+#from gi.repository import GdkX11, GstVideo
 
-# Needed for window.get_xid(), xvimagesink.set_window_handle(), respectively:
-from gi.repository import GdkX11, GstVideo
-
-
+#carry out GTK initialization after imports.
 GObject.threads_init()
 Gst.init(None)
-#filename = path.join(path.dirname(path.abspath(__file__)), 'MVI_5751.MOV')
-uri = 'http://green-oval.net:9613/;stream.nsv'
-
-'''
-Video only
-gst-launch-1.0 uridecodebin uri="http://green-oval.net:9613/;stream.nsv" name=demux demux. ! videoconvert ! x264enc ! mpegtsmux ! tcpserversink host="127.0.0.1" port=10000
-
-Audio and video
-gst-launch-1.0 uridecodebin uri="http://green-oval.net:9613/;stream.nsv" name=demux demux. ! videoconvert ! x264enc ! mpegtsmux name=mux ! tcpserversink host="127.0.0.1" port=10000 demux. ! audioconvert ! lamemp3enc ! mux.
-
-'''
 
 
-class Player(object):
-  def __init__(self):
-    #self.window = Gtk.Window()
-    #self.window.connect('destroy', self.quit)
-    #self.window.set_default_size(800, 450)
-
-    #self.drawingarea = Gtk.DrawingArea()
-    #self.window.add(self.drawingarea)
+class StreamRelayWithTextOverlay(object):
+  def __init__(self, uri, display_name, hostname='127.0.0.1', port=10000):
+    self.uri = uri
+    self.display_name = display_name
+    self.hostname = hostname
+    self.port = port
 
     # Create GStreamer pipeline
     self.pipeline = Gst.Pipeline()
@@ -81,9 +67,9 @@ class Player(object):
     # Set properties
     #self.playbin.set_property('uri', uri)
     self.uridecodebin.connect('pad-added', self.on_pad_added)
-    self.uridecodebin.set_property('uri', 'http://green-oval.net:9613/;stream.nsv')
-    self.tcpserversink.set_property('host', '127.0.0.1')
-    self.tcpserversink.set_property('port', 10000)
+    self.uridecodebin.set_property('uri', self.uri)
+    self.tcpserversink.set_property('host', self.hostname)
+    self.tcpserversink.set_property('port', self.port)
 
 
   def on_pad_added(self, uribin, pad):
@@ -126,8 +112,34 @@ class Player(object):
     print('on_error():', msg.parse_error())
     self.quit()
 
-#support ctrl-c signal handling
-signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-p = Player()
-p.run()
+def main():
+  usage = 'Relay a video stream, adding text overlay.'
+  parser = argparse.ArgumentParser(description=usage)
+  parser.add_argument('uri', help='URI of stream to relay.', type=str)
+  parser.add_argument("-n", "--name",
+                      help="display name. Clients can attach text displays via this friendlyname.",
+                      type=str, default='')
+  parser.add_argument("-r", "--relay_hostname",
+                      help='Hostname for relay TCP server.', type=str, default='127.0.0.1')
+  parser.add_argument("-p", "--relay_port",
+                      help='Port for relay TCP server.', type=int, default=10000)
+  args = parser.parse_args()
+
+  uri = args.uri
+  display_name = args.name
+  hostname = args.relay_hostname
+  port = args.relay_port
+
+  #dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+  #support ctrl-c signal handling
+  signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+  relay = StreamRelayWithTextOverlay(uri, display_name, hostname, port)
+  relay.run()
+  
+
+if __name__ == "__main__":
+  main()
+
