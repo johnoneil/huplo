@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 
-#from os import path
+
 import argparse
-#support ctrl-c escape as per http://askubuntu.com/questions/160343/quit-application-on-ctrlc-in-quickly-framework
 import signal
 
+#gstreamer 1.0 support
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst, Gtk
-#from gi.repository import GdkX11, GstVideo
 
 #carry out GTK initialization after imports.
 GObject.threads_init()
@@ -17,6 +16,19 @@ Gst.init(None)
 
 class StreamRelayWithTextOverlay(object):
   def __init__(self, uri, display_name, hostname='127.0.0.1', port=10000):
+    '''Initialize a video+audios stream relay via URI, display name etc.
+    This has been tested on .nsv(vp6.2/mpga) and .ts(h264/mp3) streams
+    but could easily fail for others.
+    Had to adopt gstreamer 1.0 to get .nsv to work
+    :param uri: uri of stream (http acceptable)
+    :param display_name: friendly name of relay display. Text overlay hook.
+    :param hostname: hostname of relay (necessary?)
+    :param port: port at which clients can connect to relay.
+
+    Relay transcodes ALL sources into an mpeg TS(h264/mp3) for simplicity.
+    We need to decode/re-encode all streams anyway since we want to draw
+    Text on it, so we might as well send out a uniform format.
+    '''
     self.uri = uri
     self.display_name = display_name
     self.hostname = hostname
@@ -30,10 +42,6 @@ class StreamRelayWithTextOverlay(object):
     self.bus.add_signal_watch()
     self.bus.connect('message::eos', self.on_eos)
     self.bus.connect('message::error', self.on_error)
-
-    # This is needed to make the video output in our DrawingArea:
-    #self.bus.enable_sync_message_emission()
-    #self.bus.connect('sync-message::element', self.on_sync_message)
 
     #Create the video pipeline elements
     self.uridecodebin = Gst.ElementFactory.make('uridecodebin', None)
@@ -61,11 +69,7 @@ class StreamRelayWithTextOverlay(object):
     self.audioconvert.link(self.lamemp3enc)
     self.lamemp3enc.link(self.mpegtsmux) 
 
-    # Add playbin to the pipeline
-    #self.pipeline.add(self.playbin)
-
     # Set properties
-    #self.playbin.set_property('uri', uri)
     self.uridecodebin.connect('pad-added', self.on_pad_added)
     self.uridecodebin.set_property('uri', self.uri)
     self.tcpserversink.set_property('host', self.hostname)
@@ -73,6 +77,11 @@ class StreamRelayWithTextOverlay(object):
 
 
   def on_pad_added(self, uribin, pad):
+    '''Callback invoked when dynamic output (source) pads
+    are added to uridecodebin.
+    When these pads appear, we connect them to the appropriate
+    audio or video pipeline.
+    '''
     pad_type = pad.query_caps(None).to_string()
     if pad_type.startswith('video/'):
       pad.link(self.videoconvert.get_static_pad('sink'))
@@ -82,31 +91,22 @@ class StreamRelayWithTextOverlay(object):
       pass
 
   def run(self):
-    #self.window.show_all()
-    # You need to get the XID after window.show_all().  You shouldn't get it
-    # in the on_sync_message() handler because threading issues will cause
-    # segfaults there.
-    #self.xid = self.drawingarea.get_property('window').get_xid()
+    '''Run the relay. Will run until quit() method is invoked.
+    '''
     self.pipeline.set_state(Gst.State.PLAYING)
     Gtk.main()
 
-  def quit(self):#, window):
+  def quit(self):
+    '''Stop the relay and shut down.
+    '''
     self.pipeline.set_state(Gst.State.NULL)
     Gtk.main_quit()
 
-  def on_sync_message(self, bus, msg):
-    if msg.get_structure().get_name() == 'prepare-window-handle':
-      print('prepare-window-handle')
-      msg.src.set_window_handle(self.xid)
-
   def on_eos(self, bus, msg):
+    '''End of stream handler invoked when pipeline detects EOS.
+    '''
     print('on_eos()')
     self.quit()
-    #self.pipeline.seek_simple(
-    #  Gst.Format.TIME,        
-    #  Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
-    #  0
-    #  )
 
   def on_error(self, bus, msg):
     print('on_error():', msg.parse_error())
@@ -133,7 +133,7 @@ def main():
 
   #dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
-  #support ctrl-c signal handling
+  ##support ctrl-c escape as per http://askubuntu.com/questions/160343/quit-application-on-ctrlc-in-quickly-framework
   signal.signal(signal.SIGINT, signal.SIG_DFL)
 
   relay = StreamRelayWithTextOverlay(uri, display_name, hostname, port)
