@@ -1,5 +1,20 @@
 #!/usr/bin/python3
+# vim: set ts=2 expandtab:
+"""
+Module: relay-stream
+Desc: Relay an existing video stream via a TCP server and allow text overlay
+Author: John O'Neil
+Email: oneil.john@gmail.com
+Date: Sat, April 12th 2014
 
+Simple stream realy with text overlay.
+Point the relay at an existing stream URL and we can relay it
+via another TCP server.
+Relaying like this (and transcoding to H264/MP3) allows us
+to access the video and overlay dynamic text and graphics atop
+the video.
+
+"""
 
 import argparse
 import signal
