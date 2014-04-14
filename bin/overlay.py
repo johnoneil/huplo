@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # vim: set ts=2 expandtab:
 """
-Module: gstreamer.py
-Desc: Gstreamer plugin for huplo heads up presentation layer
+Module: overlay.py
+Desc: Gst 1.0 dynamic text overlay plugin
 Author: John O'Neil
 Email:
 
@@ -108,9 +108,10 @@ class DynamicTextOverlay(Gst.Element):
   def eventfunc(self, pad, parent, event):
     return self.srcpad.push_event(event)
     
-  def srcqueryfunc(self, pad, query, user_data):
+  def srcqueryfunc(self, pad, object, query):
     return self.sinkpad.query(query)
-  def srceventfunc(self, pad, event, user_data):
+
+  def srceventfunc(self, pad, parent, event):
     return self.sinkpad.push_event(event)
 
   def draw_on (self, pad, buf):
@@ -142,28 +143,7 @@ class DynamicTextOverlay(Gst.Element):
     #  print "Failed cairo render"
     #  traceback.print_exc()
 
-'''
-def plugin_init(plugin, userarg):
-  DynamicTextOverlayType = GObject.type_register(DynamicTextOverlay)
-  Gst.Element.register(plugin, 'DynamicTextOverlay', 0, DynamicTextOverlayType)
-  return True
-
-
-version = Gst.version()
-Gst.Plugin.register_static_full(
-  version[0],  # GST_VERSION_MAJOR
-  version[1],  # GST_VERSION_MINOR
-  'DynamicTextOverlay',
-  'Dynamic text overlay plugin',
-  plugin_init,
-  '12.06',
-  'LGPL',
-  'dmedia',
-  'dmedia',
-  'https://xxx',
-  None,
-)
-'''
+#hack defined at http://lists.freedesktop.org/archives/gstreamer-bugs/2013-March/100008.html
 get_element_class(DynamicTextOverlay).set_metadata('dynamictextoverlay', 'classification', 'description',
 'author')
 DynamicTextOverlay.register(None, 'dynamictextoverlay', Gst.Rank.NONE, DynamicTextOverlay.__gtype__)
