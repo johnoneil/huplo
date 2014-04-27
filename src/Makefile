@@ -1,5 +1,21 @@
+COMPILER=gcc
+INCLUDES=`pkg-config --cflags glib-2.0 gstreamer-1.0 cairo`
+LIBS=`pkg-config --libs glib-2.0 gstreamer-1.0 cairo` -lgstvideo-1.0
 
+#remember that all makefile targets are in the form:
+#<target>: <dependency> <dependency> <dependency>
+#<tab>--><command(s) to make target>
 
-all:
-	gcc `pkg-config --cflags glib-2.0 gstreamer-1.0` relay_stream.c `pkg-config --libs glib-2.0 gstreamer-1.0` -o relay-stream
-	gcc `pkg-config --cflags glib-2.0 gstreamer-1.0 cairo` relay_stream_with_overlay.c `pkg-config --libs glib-2.0 gstreamer-1.0 cairo` -lgstvideo-1.0 -o relay-stream-with-overlay
+#special variable $@ contains the target name.
+
+all: relay_stream relay_stream_with_overlay
+
+clean:
+	rm relay_stream
+	rm relay_stream_with_overlay
+
+relay_stream:
+	$(COMPILER) `pkg-config --cflags glib-2.0 gstreamer-1.0` $@.c `pkg-config --libs glib-2.0 gstreamer-1.0` -o $@	
+
+relay_stream_with_overlay:
+	$(COMPILER) $(INCLUDES) $@.c $(LIBS) -o $@	
