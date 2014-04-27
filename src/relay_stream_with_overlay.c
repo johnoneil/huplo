@@ -21,6 +21,13 @@
   
   Output of this relay is always a TS(H264/MP3).
 
+  Building:
+  In LinuxMint 16, i believe the following packages are required to build.
+  There could be some missing:
+  libgstreamer1.0-dev
+  libgstreamer-plugins-base1.0-dev
+  libcairo2-dev
+  libglib2.0-dev
 */
 
 #include <gst/gst.h>
