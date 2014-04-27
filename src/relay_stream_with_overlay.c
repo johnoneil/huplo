@@ -33,6 +33,7 @@
 #include <gst/gst.h>
 #include <cairo.h>
 #include <gst/video/video-info.h>
+#include <stdio.h>
 
 /* Structure to contain all our information, so we can pass it to callbacks */
 typedef struct _CustomData {
@@ -51,6 +52,7 @@ typedef struct {
   gboolean valid;
   int width;
   int height;
+  int current_x_coord;
 } CairoOverlayState;
 
 /* Handler for the pad-added signal */
@@ -70,6 +72,7 @@ static void prepare_overlay (GstElement * overlay, GstCaps * caps, gpointer user
   gst_video_info_from_caps(&info, caps);
   state->width = info.width;
   state->height = info.height;
+  state->current_x_coord = info.width;
   state->valid = TRUE;
  }
 
@@ -86,6 +89,7 @@ static void draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp,
    if (!s->valid)
     return;
 
+  /*
    scale = 2*(((timestamp/(int)1e7) % 70)+30)/100.0;
    cairo_translate(cr, s->width/2, (s->height/2)-30);
    cairo_scale (cr, scale, scale);
@@ -97,6 +101,28 @@ static void draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp,
    cairo_curve_to (cr, 50,-30, 0,-30, 0,0 );
    cairo_set_source_rgba (cr, 0.9, 0.0, 0.1, 0.7);
    cairo_fill (cr);
+  */
+
+  char blurb[] = "...This is a test. This is ONLY a test..."; 
+  cairo_text_extents_t te;
+  cairo_set_source_rgb (cr, 1.0, 1.0, 0.0);
+  cairo_select_font_face (cr, "Georgia", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size (cr, 35.0);
+  cairo_text_extents (cr, blurb, &te);
+  double elapsed_time = (duration/(double)1e9);//time format is in nanoseconds, so we convert to seconds
+  //printf("elapsed time %f", elapsed_time);
+  s->current_x_coord -= ((s->width+te.width)/12.0)*elapsed_time;//full scroll in 12 seconds.
+  if(s->current_x_coord<(-1.0*te.width))//wraparound.
+  {
+    s->current_x_coord = s->width;
+  }
+  //cairo_move_to (cr, 0.5 - te.width / 2 - te.x_bearing, 0.5 - te.height / 2 - te.y_bearing);
+  cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
+  cairo_move_to(cr, s->current_x_coord+3, (2*s->height/3)+3);
+  cairo_show_text (cr, blurb);
+  cairo_set_source_rgb (cr, 1.0, 1.0, 0.0);
+  cairo_move_to(cr, s->current_x_coord, 2*s->height/3);
+  cairo_show_text (cr, blurb);
 }
 
 
