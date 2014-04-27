@@ -34,6 +34,7 @@
 #include <cairo.h>
 #include <gst/video/video-info.h>
 #include <stdio.h>
+#include "colors.h"
 
 /* Structure to contain all our information, so we can pass it to callbacks */
 typedef struct _CustomData {
@@ -53,6 +54,8 @@ typedef struct {
   int width;
   int height;
   int current_x_coord;
+  guint64 previous_timestamp;
+  
 } CairoOverlayState;
 
 /* Handler for the pad-added signal */
@@ -73,6 +76,8 @@ static void prepare_overlay (GstElement * overlay, GstCaps * caps, gpointer user
   state->width = info.width;
   state->height = info.height;
   state->current_x_coord = info.width;
+  //TODO: Set this to actual current timestamp value(if possible)
+  state->previous_timestamp = -1;
   state->valid = TRUE;
  }
 
@@ -89,7 +94,13 @@ static void draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp,
    if (!s->valid)
     return;
 
+  //TODO:In current initial state, the previous_timestamp value is invalid.
+  if(s->previous_timestamp<0) {
+    s->previous_timestamp = timestamp;
+  }
   /*
+   Following code from gstreamer examples puts a beating heart on the stream.
+    
    scale = 2*(((timestamp/(int)1e7) % 70)+30)/100.0;
    cairo_translate(cr, s->width/2, (s->height/2)-30);
    cairo_scale (cr, scale, scale);
@@ -109,9 +120,11 @@ static void draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp,
   cairo_select_font_face (cr, "Georgia", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size (cr, 35.0);
   cairo_text_extents (cr, blurb, &te);
-  double elapsed_time = (duration/(double)1e9);//time format is in nanoseconds, so we convert to seconds
+  double dt = ((timestamp-s->previous_timestamp)/(double)1e9);//time format is in nanoseconds, so we convert to seconds
+  //double dt = ((duration)/(double)1e9);//time format is in nanoseconds, so we convert to seconds
+  s->previous_timestamp = timestamp;
   //printf("elapsed time %f", elapsed_time);
-  s->current_x_coord -= ((s->width+te.width)/12.0)*elapsed_time;//full scroll in 12 seconds.
+  s->current_x_coord -= ((s->width+te.width)/12.0)*dt;//full scroll in 12 seconds.
   if(s->current_x_coord<(-1.0*te.width))//wraparound.
   {
     s->current_x_coord = s->width;
@@ -124,7 +137,6 @@ static void draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp,
   cairo_move_to(cr, s->current_x_coord, 2*s->height/3);
   cairo_show_text (cr, blurb);
 }
-
 
 /******************************************************************************
 function: main()
@@ -142,7 +154,14 @@ int main(int argc, char *argv[]) {
 
 	//draw url to relay out of our command line args
 	if(argc<2) {
-		g_print ("Please provide a valid URL to relay.\n");
+		g_print ("********relay-stream-with-overlay********"
+    BOLDWHITE "\nusage: relay-stream-with-overlay [URL of http stream to relay]"RESET
+    "\nIf successful, program should report correct stream online status."
+    "\nClients (i.e. vlc) can then connect to the relay via TCP on port 10000"
+    BOLDRED"\nPort value 10000 "RESET"is currently hard coded."
+    "\nThe URL i'm using for VLC is "BOLDWHITE"\"tcp://127.0.0.1:10000\""RESET
+    "\nfor a vlc instance on the same host."
+    "\nSome work needs to be done to make a more scalable solution.");
 		return -1;
 	}
 	
@@ -166,8 +185,9 @@ int main(int argc, char *argv[]) {
    
   /* Create the empty pipeline */
   pipeline = gst_pipeline_new ("test-pipeline");
-   
-  if (!pipeline || !source || !sink) {
+  
+  //TODO: Test all pipeline elements to ensure they're created correctly.
+  if (!pipeline) {
     g_printerr ("Not all elements could be created.\n");
     return -1;
   }
@@ -276,7 +296,7 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
   GstStructure *new_pad_struct = NULL;
   const gchar *new_pad_type = NULL;
   
-  g_print ("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
+  g_print (YELLOW "[MSG]" RESET "\tReceived new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
 
 	/* Check the new pad's type */
   new_pad_caps = gst_pad_query_caps(new_pad, 0);
@@ -302,7 +322,7 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
   if (GST_PAD_LINK_FAILED (ret)) {
 	  g_print ("  Type is '%s' but link failed.\n", new_pad_type);
 	} else {
-	  g_print ("  Link succeeded (type '%s').\n", new_pad_type);
+	  g_print ( GREEN "[OK]" RESET "\tPipeline of type '%s' is now online.\n", new_pad_type);
 	}
   
 exit:
