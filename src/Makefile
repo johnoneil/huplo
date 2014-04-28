@@ -1,4 +1,5 @@
-COMPILER=gcc
+#COMPILER=gcc
+COMPILER=g++
 INCLUDES=`pkg-config --cflags glib-2.0 gstreamer-1.0 cairo`
 LIBS=`pkg-config --libs glib-2.0 gstreamer-1.0 cairo` -lgstvideo-1.0
 

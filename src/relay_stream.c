@@ -14,13 +14,74 @@
 	a local TCP server, transcoding to TS(h264/mp3)
 
 */
-/*int link(GstElement& source, GstElement& sink) {
-  if (gst_element_link (source, sink) != TRUE) {
-    g_printerr ("Elements could not be linked.\n");
-    gst_object_unref (pipeline);
-    return -1;
-  }
-}*/
+/**
+ * SECTION:element-cairooverlay
+ *
+ * cairooverlay renders an overlay using a application provided render function.
+ *
+ * The full example can be found in tests/examples/cairo/cairo_overlay.c
+ * <refsect2>
+ * <title>Example code</title>
+ * |[
+ *
+ * #include &lt;gst/gst.h&gt;
+ * #include &lt;gst/video/video.h&gt;
+ *
+ * ...
+ *
+ * typedef struct {
+ *   gboolean valid;
+ *   int width;
+ *   int height;
+ * } CairoOverlayState;
+ * 
+ * ...
+ *
+ * static void
+ * prepare_overlay (GstElement * overlay, GstCaps * caps, gpointer user_data)
+ * {
+ *   CairoOverlayState *state = (CairoOverlayState *)user_data;
+ *
+ *   gst_video_format_parse_caps (caps, NULL, &amp;state-&gt;width, &amp;state-&gt;height);
+ *   state-&gt;valid = TRUE;
+ * }
+ *
+ * static void
+ * draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp, 
+ *   guint64 duration, gpointer user_data)
+ * {
+ *   CairoOverlayState *s = (CairoOverlayState *)user_data;
+ *   double scale;
+ *
+ *   if (!s-&gt;valid)
+ *     return;
+ *
+ *   scale = 2*(((timestamp/(int)1e7) % 70)+30)/100.0;
+ *   cairo_translate(cr, s-&gt;width/2, (s-&gt;height/2)-30);
+ *   cairo_scale (cr, scale, scale);
+ *
+ *   cairo_move_to (cr, 0, 0);
+ *   cairo_curve_to (cr, 0,-30, -50,-30, -50,0);
+ *   cairo_curve_to (cr, -50,30, 0,35, 0,60 );
+ *   cairo_curve_to (cr, 0,35, 50,30, 50,0 ); *  
+ *   cairo_curve_to (cr, 50,-30, 0,-30, 0,0 );
+ *   cairo_set_source_rgba (cr, 0.9, 0.0, 0.1, 0.7);
+ *   cairo_fill (cr);
+ * }
+ *
+ * ...
+ *
+ * cairo_overlay = gst_element_factory_make (&quot;cairooverlay&quot;, &quot;overlay&quot;);
+ *
+ * g_signal_connect (cairo_overlay, &quot;draw&quot;, G_CALLBACK (draw_overlay),
+ *   overlay_state);
+ * g_signal_connect (cairo_overlay, &quot;caps-changed&quot;, 
+ *   G_CALLBACK (prepare_overlay), overlay_state);
+ * ...
+ *
+ * ]|
+ * </refsect2>
+ */
 
 /* Structure to contain all our information, so we can pass it to callbacks */
 typedef struct _CustomData {
@@ -122,7 +183,7 @@ int main(int argc, char *argv[]) {
   
   /* Wait until error or EOS */
   bus = gst_element_get_bus (pipeline);
-  msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+  msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, (GstMessageType)(GST_MESSAGE_ERROR | GST_MESSAGE_EOS));
   
   /* Parse message */
   if (msg != NULL) {
