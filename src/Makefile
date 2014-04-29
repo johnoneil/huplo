@@ -11,12 +11,14 @@ FLAGS=-std=c++11
 
 all: relay_stream relay_stream_with_overlay json_rpc_server_test json_rpc_client_test json_rpc_relay
 
+rebuild: clean all
+
 clean:
-	rm relay_stream
-	rm relay_stream_with_overlay
-	rm json_rpc_server_test
-	rm json_rpc_client_test
-	rm json_rpc_relay
+	rm -f relay_stream
+	rm -f relay_stream_with_overlay
+	rm -f json_rpc_server_test
+	rm -f json_rpc_client_test
+	rm -f json_rpc_relay
 
 relay_stream:
 	$(COMPILER) $(FLAGS) `pkg-config --cflags glib-2.0 gstreamer-1.0` $@.c `pkg-config --libs glib-2.0 gstreamer-1.0` -o $@	
