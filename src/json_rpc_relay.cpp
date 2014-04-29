@@ -34,7 +34,39 @@
 #include <cairo.h>
 #include <gst/video/video-info.h>
 #include <stdio.h>
+#include <jsonrpc/rpc.h>
+#include <iostream>
+
 #include "colors.h"
+#include "abstractrpcstubserver.h"
+#include "threadsafe_queue.hpp"
+
+using namespace jsonrpc;
+using namespace std;
+
+class MyStubServer : public AbstractRPCStubServer
+{
+    public:
+        MyStubServer(Queue<std::string>* queue);
+
+        std::string ShowMessage(const std::string& friendlyName, const std::string& msg, const int& x, const int& y);
+	private:
+		Queue<std::string>* m_queue;
+};
+
+MyStubServer::MyStubServer(Queue<std::string>* queue)
+	:AbstractRPCStubServer(new HttpServer(8080))
+	,m_queue(queue)
+{
+}
+
+std::string MyStubServer::ShowMessage(const std::string& friendlyName, 
+	const std::string& msg, const int& x, const int& y)
+{
+	cout<<"Showing message\'"<<msg<<"\' at "<<x<<","<<y<<" named "<<friendlyName<<endl;
+	m_queue->push(msg);
+	return friendlyName;
+}
 
 /* Structure to contain all our information, so we can pass it to callbacks */
 typedef struct _CustomData {
@@ -55,6 +87,8 @@ typedef struct {
   int height;
   int current_x_coord;
   guint64 previous_timestamp;
+	Queue< std::string >* queue;
+	std::string blurb = "This is a test. This is ONLY a test...";
   
 } CairoOverlayState;
 
@@ -98,28 +132,19 @@ static void draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp,
   if(s->previous_timestamp<0) {
     s->previous_timestamp = timestamp;
   }
-  /*
-   Following code from gstreamer examples puts a beating heart on the stream.
-    
-   scale = 2*(((timestamp/(int)1e7) % 70)+30)/100.0;
-   cairo_translate(cr, s->width/2, (s->height/2)-30);
-   cairo_scale (cr, scale, scale);
 
-   cairo_move_to (cr, 0, 0);
-   cairo_curve_to (cr, 0,-30, -50,-30, -50,0);
-   cairo_curve_to (cr, -50,30, 0,35, 0,60 );
-   cairo_curve_to (cr, 0,35, 50,30, 50,0 ); 
-   cairo_curve_to (cr, 50,-30, 0,-30, 0,0 );
-   cairo_set_source_rgba (cr, 0.9, 0.0, 0.1, 0.7);
-   cairo_fill (cr);
-  */
-
-  char blurb[] = "...This is a test. This is ONLY a test..."; 
+	//Are there commands to take out of our RPC queue?
+	if(!s->queue->empty())
+	{
+		s->blurb = s->queue->front();
+		s->queue->pop();
+	}
+	
   cairo_text_extents_t te;
   cairo_set_source_rgb (cr, 1.0, 1.0, 0.0);
   cairo_select_font_face (cr, "Georgia", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size (cr, 35.0);
-  cairo_text_extents (cr, blurb, &te);
+  cairo_text_extents (cr, s->blurb.c_str(), &te);
   double dt = ((timestamp-s->previous_timestamp)/(double)1e9);//time format is in nanoseconds, so we convert to seconds
   //double dt = ((duration)/(double)1e9);//time format is in nanoseconds, so we convert to seconds
   s->previous_timestamp = timestamp;
@@ -132,10 +157,18 @@ static void draw_overlay (GstElement * overlay, cairo_t * cr, guint64 timestamp,
   //cairo_move_to (cr, 0.5 - te.width / 2 - te.x_bearing, 0.5 - te.height / 2 - te.y_bearing);
   cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
   cairo_move_to(cr, s->current_x_coord+3, (2*s->height/3)+3);
-  cairo_show_text (cr, blurb);
+  cairo_show_text (cr, s->blurb.c_str());
   cairo_set_source_rgb (cr, 1.0, 1.0, 0.0);
   cairo_move_to(cr, s->current_x_coord, 2*s->height/3);
-  cairo_show_text (cr, blurb);
+  cairo_show_text (cr, s->blurb.c_str());
+}
+
+//
+// Dummy task function for RPC TX
+//
+void RPCRXFunc(void *data) {
+	//TODO: sleep?
+	cout<<"."<<endl;
 }
 
 /******************************************************************************
@@ -149,6 +182,12 @@ int main(int argc, char *argv[]) {
   GstBus *bus;
   GstMessage *msg;
   GstStateChangeReturn ret;
+	GstTask * rpc_task = 0;
+
+	CairoOverlayState overlay_state;
+	Queue< std::string > queue;
+	overlay_state.queue = &queue;
+	MyStubServer s(&queue);
 
 	CustomData data;
 
@@ -238,13 +277,29 @@ int main(int argc, char *argv[]) {
   g_signal_connect (data.demux, "pad-added", G_CALLBACK (pad_added_handler), &data);
 
   /* connect 'on draw' and video image size change handlers to cairo overlay*/
-  CairoOverlayState overlay_state;
   g_signal_connect(data.overlay,"draw", G_CALLBACK (draw_overlay), &overlay_state);
   g_signal_connect(data.overlay, "caps-changed",G_CALLBACK (prepare_overlay), &overlay_state);
-  
-  /* Modify the source's properties */
- // g_object_set (source, "pattern", 0, NULL);
-  
+ /* 
+  rpc_task = gst_task_create(RPCRXFunc, &s);
+	if(!rpc_task)
+	{
+    g_printerr ("Unable to create json rpc RX task.\n");
+    gst_object_unref (pipeline);
+    return -1;
+	}
+	GStaticRecMutex *rpc_mutex = 0;
+     
+	rpc_mutex = g_new (GStaticRecMutex, 1);
+	if (task_mutex && input_task)
+	{
+		g_static_rec_mutex_init(rpc_mutex);
+		gst_task_set_lock (rpc_task, rpc_mutex);
+		gst_task_start (rpc_task);
+		}
+
+	gst_task_set_lock(rpc_task, rpc_lock);
+	gst_task_start(rpc_task);
+*/  
   /* Start playing */
   ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
   if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -252,6 +307,8 @@ int main(int argc, char *argv[]) {
     gst_object_unref (pipeline);
     return -1;
   }
+
+	s.StartListening();
   
   /* Wait until error or EOS */
   bus = gst_element_get_bus (pipeline);
@@ -280,6 +337,9 @@ int main(int argc, char *argv[]) {
     }
     gst_message_unref (msg);
   }
+  
+	s.StopListening();
+	//gst_task_join(rpc_task);
   
   /* Free resources */
   gst_object_unref (bus);
